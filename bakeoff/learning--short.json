@@ -1,0 +1,118 @@
+{
+ "duration_api_ms": 38226,
+ "stop_reason": "end_turn",
+ "session_id": "a86cf16f-665a-4dbd-ba18-413ad46d20ad",
+ "total_cost_usd": 0.46767849999999994,
+ "usage": {
+  "input_tokens": 130,
+  "cache_creation_input_tokens": 15299,
+  "cache_read_input_tokens": 109594,
+  "output_tokens": 2660,
+  "output_tokens_details": {
+   "thinking_tokens": 966
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 15299,
+   "ephemeral_5m_input_tokens": 0
+  },
+  "inference_geo": "not_available",
+  "iterations": [
+   {
+    "input_tokens": 32,
+    "output_tokens": 1661,
+    "cache_read_input_tokens": 28043,
+    "cache_creation_input_tokens": 1056,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 1056
+    },
+    "type": "message",
+    "model": null
+   }
+  ],
+  "speed": "standard"
+ },
+ "modelUsage": {
+  "claude-fable-5-1": {
+   "inputTokens": 130,
+   "outputTokens": 2660,
+   "cacheReadInputTokens": 109594,
+   "cacheCreationInputTokens": 15299,
+   "webSearchRequests": 0,
+   "costUSD": 0.46767849999999994,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 966,
+   "canonicalModel": "claude-fable-5-1",
+   "provider": "firstParty",
+   "costBasis": "list"
+  }
+ },
+ "permission_denials": [],
+ "terminal_reason": "completed",
+ "fast_mode_state": "off",
+ "fast_mode_disabled_reason": "sdk_opt_in_required",
+ "subagent_stats": {
+  "spawned": 0,
+  "requested": {
+   "background": 0,
+   "foreground": 0,
+   "unset": 0
+  },
+  "started_in_background": 0,
+  "max_depth": 0,
+  "spawned_by_subagents": 0,
+  "completed": 0,
+  "failed": 0,
+  "killed": {
+   "parent": 0,
+   "user": 0,
+   "system": 0
+  },
+  "refused": {
+   "depth_limit": 0,
+   "concurrency_limit": 0,
+   "budget": 0
+  },
+  "by_type": {}
+ },
+ "is_error": false,
+ "num_turns": 5,
+ "subtype": "success",
+ "api_error_status": null,
+ "result": "It is deliberate, and it is the plugin's stated reason for existing. The README opens with it: a PR whose only failing checks are non-required reads as mergeable, the way GitHub itself treats it. Here is the mechanism.\n\n**GitHub already makes the call.** Branch protection only gates a merge on the checks it lists as required. When a non-required check fails, GitHub does not report the PR as BLOCKED. It reports `mergeStateStatus` as UNSTABLE, and the merge button stays enabled. The plugin follows that judgement rather than the raw check rollup.\n\n**The classifier only counts required checks as failures.** The \u274c and \ud83d\udfe0 verdicts come from the `required_failing` flag, which is computed in `required_state` at daemon.py:282. That function walks every check run and status context, but skips any whose `isRequired` is not true at daemon.py:311. A failing non-required check therefore never sets the flag.\n\n**UNSTABLE then falls through to its own rung.** In `blocker_for` at daemon.py:346, the order is:\n\n1. Required failure, at daemon.py:385. Not hit, per the above.\n2. Rollup PENDING or a required check still running. Not hit once everything has finished.\n3. Review required, ejected from the queue, then BLOCKED. Not hit.\n4. UNSTABLE, at daemon.py:397, returns the `unstable` glyph.\n\n**Which glyph that is depends on config.** The default is \ud83c\udd97, which is deliberately not the same as \u2705. The `unstable` setting in config.toml resolves it in `icon_set` at daemon.py:170:\n\n| Setting | Emoji | Nerd Font |\n|---|---|---|\n| `\"ok\"` (default) | \ud83c\udd97 | oct-check |\n| `\"pass\"` | \u2705 | oct-check_circle_fill |\n| `\"warn\"` | \u26a0\ufe0f | oct-alert |\n\nSo if your row shows an actual \u2705 rather than \ud83c\udd97, the config has `unstable = \"pass\"`. The Nerd Font default keeps the distinction visible too: a hollow check for UNSTABLE versus a filled circle check for CLEAN.\n\n`\u2605 Insight \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`\n- The daemon does not reimplement branch protection. It asks GitHub `isRequired(pullRequestNumber:)` per check and lets `mergeStateStatus` carry the verdict, so any protection rule change on the base branch is honoured automatically.\n- The `unstable` setting is resolved once into the icon table rather than checked at classification time. That keeps `blocker_for` a pure ordering of facts, and nothing downstream needs to know the state is configurable.\n- \ud83c\udd97 as a distinct default is the compromise: mergeable, but flagged so you can decide whether the optional failure matters.\n`\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500`",
+ "ttft_ms": 2256,
+ "type": "result",
+ "duration_ms": 39311,
+ "uuid": "caeb4e2d-4db0-4519-8945-9701815b0b15",
+ "ttft_stream_ms": 1330,
+ "time_to_request_ms": 40,
+ "first_content_frame_ms": 1330,
+ "queued_turn_count": 0,
+ "result_index": 0,
+ "bakeoff": {
+  "arm": "learning",
+  "prompt": "short",
+  "wall_s": 40,
+  "settings": {
+   "enabledPlugins": {
+    "agents-output-styles@bonkey": false,
+    "caveman@caveman": false,
+    "i-have-adhd@i-have-adhd": false
+   },
+   "outputStyle": "Learning"
+  },
+  "caveman_mode": "",
+  "harness": {
+   "tool": "Claude Code",
+   "version": "2.1.274",
+   "model": "claude-fable-5-1",
+   "effort": "xhigh"
+  }
+ }
+}

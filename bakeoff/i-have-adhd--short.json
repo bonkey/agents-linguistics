@@ -1,0 +1,117 @@
+{
+ "duration_api_ms": 118713,
+ "stop_reason": "end_turn",
+ "session_id": "d6ba045e-4191-44e4-9001-fad02e6a42a1",
+ "total_cost_usd": 1.191197,
+ "usage": {
+  "input_tokens": 354,
+  "cache_creation_input_tokens": 33313,
+  "cache_read_input_tokens": 375788,
+  "output_tokens": 8549,
+  "output_tokens_details": {
+   "thinking_tokens": 5016
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 33313,
+   "ephemeral_5m_input_tokens": 0
+  },
+  "inference_geo": "not_available",
+  "iterations": [
+   {
+    "input_tokens": 32,
+    "output_tokens": 1615,
+    "cache_read_input_tokens": 46315,
+    "cache_creation_input_tokens": 785,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 785
+    },
+    "type": "message",
+    "model": null
+   }
+  ],
+  "speed": "standard"
+ },
+ "modelUsage": {
+  "claude-fable-5-1": {
+   "inputTokens": 354,
+   "outputTokens": 8549,
+   "cacheReadInputTokens": 375788,
+   "cacheCreationInputTokens": 33313,
+   "webSearchRequests": 0,
+   "costUSD": 1.191197,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 5016,
+   "canonicalModel": "claude-fable-5-1",
+   "provider": "firstParty",
+   "costBasis": "list"
+  }
+ },
+ "permission_denials": [],
+ "terminal_reason": "completed",
+ "fast_mode_state": "off",
+ "fast_mode_disabled_reason": "sdk_opt_in_required",
+ "subagent_stats": {
+  "spawned": 0,
+  "requested": {
+   "background": 0,
+   "foreground": 0,
+   "unset": 0
+  },
+  "started_in_background": 0,
+  "max_depth": 0,
+  "spawned_by_subagents": 0,
+  "completed": 0,
+  "failed": 0,
+  "killed": {
+   "parent": 0,
+   "user": 0,
+   "system": 0
+  },
+  "refused": {
+   "depth_limit": 0,
+   "concurrency_limit": 0,
+   "budget": 0
+  },
+  "by_type": {}
+ },
+ "is_error": false,
+ "num_turns": 12,
+ "subtype": "success",
+ "api_error_status": null,
+ "result": "It's the plugin's stated purpose. The README opens with it: a PR whose only failing checks are non-required reads as mergeable, the way GitHub itself treats it. GitHub lets you press Merge in that state, and this plugin was built to replace `mergr` precisely because `mergr` painted those red.\n\n**How the code gets there**, in the order `blocker_for` checks things:\n\n1. `required_state` skips every check whose `isRequired` is not true at `daemon.py:311`. An optional failure never sets `required_failing`, so \u274c and \ud83d\udfe0 never fire.\n2. The rollup is read only for PENDING at `daemon.py:389`. GitHub flips the whole rollup to FAILURE as soon as any check fails, optional included, so reading FAILURE there would put \u274c on every optional failure.\n3. GitHub reports `mergeStateStatus == UNSTABLE` for exactly this case, and that lands on the `unstable` glyph at `daemon.py:397`.\n\n**Which glyph that is** depends on the `unstable` setting in config.toml:\n\n| setting | emoji | nerd |\n|---|---|---|\n| `\"ok\"` (default) | \ud83c\udd97 | oct-check, plain tick |\n| `\"pass\"` | \u2705 | oct-check_circle_fill, same as CLEAN |\n| `\"warn\"` | \u26a0\ufe0f | oct-alert |\n\n**Why yours looks identical to a clean PR.** The copy herdr runs is from Sep 7, commit 73f7978, before the Python rewrite. Its last startup line in the daemon log says `unstable=pass`. The \ud83c\udd97 default only arrived on Sep 8. The plugin's config directory is empty, so nothing overrides it either way.\n\nNext: reinstall with `herdr plugin install bonkey/herdr-pr-emoji` so the running copy draws UNSTABLE as a plain tick rather than the filled circle.",
+ "ttft_ms": 2538,
+ "type": "result",
+ "duration_ms": 142086,
+ "uuid": "5f53e983-c3c5-4f7d-98bb-659f31d92ec0",
+ "ttft_stream_ms": 1067,
+ "time_to_request_ms": 27,
+ "first_content_frame_ms": 1068,
+ "queued_turn_count": 0,
+ "result_index": 0,
+ "bakeoff": {
+  "arm": "i-have-adhd",
+  "prompt": "short",
+  "wall_s": 143,
+  "settings": {
+   "enabledPlugins": {
+    "agents-output-styles@bonkey": false,
+    "caveman@caveman": false,
+    "i-have-adhd@i-have-adhd": true
+   }
+  },
+  "caveman_mode": "",
+  "harness": {
+   "tool": "Claude Code",
+   "version": "2.1.274",
+   "model": "claude-fable-5-1",
+   "effort": "xhigh"
+  }
+ }
+}

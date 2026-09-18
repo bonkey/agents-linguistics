@@ -1,0 +1,117 @@
+{
+ "duration_api_ms": 31847,
+ "stop_reason": "end_turn",
+ "session_id": "0f281a75-33bb-4fb7-b181-4a8a155959d4",
+ "total_cost_usd": 0.5459452499999999,
+ "usage": {
+  "input_tokens": 162,
+  "cache_creation_input_tokens": 20162,
+  "cache_read_input_tokens": 149341,
+  "output_tokens": 2075,
+  "output_tokens_details": {
+   "thinking_tokens": 597
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 20162,
+   "ephemeral_5m_input_tokens": 0
+  },
+  "inference_geo": "not_available",
+  "iterations": [
+   {
+    "input_tokens": 32,
+    "output_tokens": 544,
+    "cache_read_input_tokens": 32602,
+    "cache_creation_input_tokens": 1347,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 1347
+    },
+    "type": "message",
+    "model": null
+   }
+  ],
+  "speed": "standard"
+ },
+ "modelUsage": {
+  "claude-fable-5-1": {
+   "inputTokens": 162,
+   "outputTokens": 2075,
+   "cacheReadInputTokens": 149341,
+   "cacheCreationInputTokens": 20162,
+   "webSearchRequests": 0,
+   "costUSD": 0.5459452499999999,
+   "contextWindow": 1000000,
+   "maxOutputTokens": 64000,
+   "thinkingTokens": 597,
+   "canonicalModel": "claude-fable-5-1",
+   "provider": "firstParty",
+   "costBasis": "list"
+  }
+ },
+ "permission_denials": [],
+ "terminal_reason": "completed",
+ "fast_mode_state": "off",
+ "fast_mode_disabled_reason": "sdk_opt_in_required",
+ "subagent_stats": {
+  "spawned": 0,
+  "requested": {
+   "background": 0,
+   "foreground": 0,
+   "unset": 0
+  },
+  "started_in_background": 0,
+  "max_depth": 0,
+  "spawned_by_subagents": 0,
+  "completed": 0,
+  "failed": 0,
+  "killed": {
+   "parent": 0,
+   "user": 0,
+   "system": 0
+  },
+  "refused": {
+   "depth_limit": 0,
+   "concurrency_limit": 0,
+   "budget": 0
+  },
+  "by_type": {}
+ },
+ "is_error": false,
+ "num_turns": 6,
+ "subtype": "success",
+ "api_error_status": null,
+ "result": "Answer is in the code and docs. Writing it up now.\n\nBecause that is what GitHub says, and the daemon deliberately does not second-guess it. Branch protection only counts required checks, so a PR whose only failures are optional gets `mergeStateStatus == UNSTABLE`, which GitHub itself treats as \"the merge button works\".\n\nThe daemon follows that in two steps:\n\n- **The failing verdict ignores optional checks.** `required_state` in `daemon.py:311` skips every context whose `isRequired` is not true. With no required check failing, `required_failing` stays false, so \u274c and \ud83d\udfe0 never trigger. The rollup-level `FAILURE` is not used for the verdict because one optional failure is enough to turn the whole rollup red (comment at `daemon.py:667`).\n- **UNSTABLE then falls through to its own glyph.** In `blocker_for` at `daemon.py:397`, `UNSTABLE` returns `icons[\"unstable\"]`, not `icons[\"mergeable\"]`. By default that is \ud83c\udd97 with emoji or `oct-check` with Nerd Font, which is a plain check rather than the filled circle of \u2705. The `unstable` setting in config chooses the reading: `\"ok\"` is the default, `\"pass\"` maps it onto the \u2705 glyph, `\"warn\"` maps it onto \u26a0\ufe0f (`icon_set`, `daemon.py:176`).\n\nSo if you see a true \u2705 on such a PR, either `unstable = \"pass\"` is set in your config, or the two Nerd Font check glyphs look alike in your font. Set `unstable = \"warn\"` if you want optional failures to stand out.",
+ "ttft_ms": 2636,
+ "type": "result",
+ "duration_ms": 33044,
+ "uuid": "f1417341-2c95-4efa-9d0f-dda8ff0c2070",
+ "ttft_stream_ms": 1302,
+ "time_to_request_ms": 77,
+ "first_content_frame_ms": 1303,
+ "queued_turn_count": 0,
+ "result_index": 0,
+ "bakeoff": {
+  "arm": "caveman-lite",
+  "prompt": "short",
+  "wall_s": 34,
+  "settings": {
+   "enabledPlugins": {
+    "agents-output-styles@bonkey": false,
+    "caveman@caveman": true,
+    "i-have-adhd@i-have-adhd": false
+   }
+  },
+  "caveman_mode": "lite",
+  "harness": {
+   "tool": "Claude Code",
+   "version": "2.1.274",
+   "model": "claude-fable-5-1",
+   "effort": "xhigh"
+  }
+ }
+}
