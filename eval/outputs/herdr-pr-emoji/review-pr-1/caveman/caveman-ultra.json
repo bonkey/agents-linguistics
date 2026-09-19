@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 221246,
+  "stop_reason": "end_turn",
+  "session_id": "99a47745-cafe-44bd-b4d9-3f6ba803febc",
+  "total_cost_usd": 1.7557695,
+  "usage": {
+    "input_tokens": 28,
+    "cache_creation_input_tokens": 37241,
+    "cache_read_input_tokens": 439078,
+    "output_tokens": 18018,
+    "output_tokens_details": {
+      "thinking_tokens": 11521
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 37241,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 4013,
+        "cache_read_input_tokens": 47055,
+        "cache_creation_input_tokens": 647,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 647
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 28,
+      "outputTokens": 18018,
+      "cacheReadInputTokens": 439078,
+      "cacheCreationInputTokens": 37241,
+      "webSearchRequests": 0,
+      "costUSD": 1.7557695,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 11521,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 17,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: request changes.** The bug is real and `ssh -G` is the right way to resolve the alias. But the permanent negative cache brings back the same silent empty sidebar the PR fixes, and the test suite now calls real ssh.\n\nI verified on a scratch copy in `/tmp`, since deleted. The repo is untouched. `gh` has no auth, so I fetched the diff from the public API.\n\nThe PR base is `798dfa9`, 15 commits behind main. The patch applies clean on `81e8933` (offset 431) and 173 tests pass, so the PR's \"74 tests\" figure is stale. Ask for a rebase. Line numbers below are from the PR head.\n\n**Findings, most severe first**\n\n1. **`daemon.py:533-541` `ssh_host_is_github` — a failed lookup is cached as False for the daemon's lifetime.**\n   - Cause: `SSH_HOST_CACHE[host] = answer` runs on every path, including rc 124 (timeout) and rc 255.\n   - Probe: a first call returning 124 and a second returning `hostname github.com` both gave slug `''`, with cache `{'github.com-work': False}`.\n   - One slow `ssh -G` at login blanks that host until the daemon restarts, with no log line.\n   - An alias added to `~/.ssh/config` after the daemon starts is never seen.\n   - Fix: cache only when rc is 0. Retry negatives each cycle, give them a TTL, or key the cache on the config mtime. Log once per host when ssh fails.\n\n2. **`test_daemon.py:757` `test_other_remotes`, plus missing tests — the suite is not hermetic.**\n   - Cause: the test calls `slug_from_url(url)` without a resolver, so it falls through to real ssh.\n   - A logging stub `ssh` placed first in `PATH` recorded `-G gitlab.com` during the run.\n   - The test therefore reads the machine's ssh config and fills the global `SSH_HOST_CACHE`. The PR body says it wanted to avoid exactly this.\n   - `ssh_host_is_github` itself has no coverage: output parsing, caching, rc 124 or 255, missing `hostname` line, missing ssh.\n   - Fix: pass `lambda h: False` in that test, or patch `daemon.ssh_host_is_github` in `Remotes.setUp`. Add tests that use `mock.patch.object(daemon, \"run\", ...)` and clear the cache.\n\n3. **`daemon.py:547-549` `alias_path` — the `ssh://` branch keeps the port in the host.**\n   - Cause: `rest.partition(\"/\")` leaves `github.com-work:22` as the host.\n   - Real `ssh -G github.com-work:22` returns `hostname github.com-work:22`, so the slug is empty.\n   - `ssh://git@ssh.github.com:443/owner/name`, a form GitHub documents, fails the same way.\n   - Fix: strip `:port` from the host in the `ssh://` branch, and handle `[v6]:port`.\n\n4. **`daemon.py:539` — `== \"github.com\"` rejects `HostName ssh.github.com`.**\n   - Cause: GitHub's documented port-443 setup uses that HostName.\n   - Real `ssh -G` on such an alias returns `hostname ssh.github.com`, so the slug stays empty.\n   - Fix: test `in (\"github.com\", \"ssh.github.com\")`.\n\n5. **`daemon.py:535` and `:553-555` — the host reaches the ssh argv without validation.**\n   - Cause: `url.partition(\":\")` takes anything before the first colon as the host.\n   - Origin `-oProxyCommand=touch /tmp/x:o/n` hands the host `-oProxyCommand=touch /tmp/x` to `ssh -G`. `-F/tmp/evil/config:o/n` does the same.\n   - It is not exploitable today: ssh exits 255 with usage because there is no positional host, and OpenSSH 10.3 rejects such a host even after `--`. Git blocks the same class of input (CVE-2017-1000117).\n   - Junk hosts such as `./local` or `C` also start an ssh process each.\n   - Fix: require `re.fullmatch(r\"[A-Za-z0-9][A-Za-z0-9._-]*\", host)` before the call, and put `\"--\"` before the host.\n\n6. **`daemon.py:524-530` docstring and the PR claim — `ssh -G` does more than read the config file.**\n   - Cause: `ssh -G` runs `Match exec` commands from the user's config; I confirmed a marker file was created. With `CanonicalizeHostname` set it also does DNS lookups.\n   - The daemon now runs the user's `Match exec` commands in the background, once per host. Slow ones hit the 5s `GIT_TIMEOUT` and trigger finding 1.\n   - Fix: say so in the docstring. Finding 1's fix covers the timeout.\n\n7. **`daemon.py:555` — a leading slash in the path is rejected.**\n   - Cause: `git@github.com-work:/octo-org/app.git` splits into three parts, so the slug is empty. Git accepts that form.\n   - Fix: `path.lstrip(\"/\")`.\n\nNo injection through the wider input: `lookup_query` escapes owner and name with `json.dumps`.",
+  "ttft_ms": 2048,
+  "type": "result",
+  "duration_ms": 228713,
+  "uuid": "a9a826a4-9e1f-43cf-bd7c-7278a280d8b3",
+  "ttft_stream_ms": 1386,
+  "time_to_request_ms": 168,
+  "first_content_frame_ms": 1387,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "caveman-ultra",
+    "prompt": "review-pr-1",
+    "wall_s": 231,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "ultra",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

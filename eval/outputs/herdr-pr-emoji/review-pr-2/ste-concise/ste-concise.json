@@ -1,0 +1,134 @@
+{
+  "duration_api_ms": 323629,
+  "stop_reason": "end_turn",
+  "session_id": "3ae171bb-0223-46c3-95b7-60847fb19369",
+  "total_cost_usd": 3.7449987499999993,
+  "usage": {
+    "input_tokens": 46,
+    "cache_creation_input_tokens": 101663,
+    "cache_read_input_tokens": 1595563,
+    "output_tokens": 24028,
+    "output_tokens_details": {
+      "thinking_tokens": 15673
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 101663,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2400,
+        "cache_read_input_tokens": 111689,
+        "cache_creation_input_tokens": 448,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 448
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 46,
+      "outputTokens": 24028,
+      "cacheReadInputTokens": 1595563,
+      "cacheCreationInputTokens": 101663,
+      "webSearchRequests": 0,
+      "costUSD": 3.6340107499999994,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 15673,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 69503,
+      "outputTokens": 2297,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 3,
+      "costUSD": 0.11098799999999999,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 33,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: merge.** No finding blocks the merge, but fix findings 1 to 3 in a follow-up. [#2](https://github.com/bonkey/herdr-pr-emoji/pull/2) is already merged (commit `39af215`, 10 September 21:05), so this review covers the range `c0baa8e..d1daf8a` after the fact.\n\nValidation that ran:\n- The suite of the PR head passes: 108 tests, `python3 -m unittest`.\n- All 15 Octicon codepoints in `daemon.py` and in the README colour rules match the Nerd Fonts glyph table v3.5.1.\n- The README TOML block parses with `tomllib`.\n- The herdr 0.9.1 binary confirms the limit of 16 rules and the `contains` and `fg` keys.\n- `gh` has no authentication here, so I read the PR from local git, and no query ran against a live merge queue.\n- The repository is unchanged. The temp copies are deleted.\n\n## Findings, most severe first\n\n1. **Default flip without a signal, medium, confirmed**\n   - **Location:** `daemon.py:110` (`DEFAULT_ICON_SET = \"nerd\"`), `README.md:306`.\n   - **Cause:** An install on 0.4.1 with no `icons` key changes to private-use glyphs on update. A terminal without a Nerd Font shows a box in every row, and the log says nothing. `--query` and `--resolve` also change their output, while the README still labels it `branch<TAB>emoji`.\n   - **Fix:** Log the active icon set at the start. Add an upgrade note to the README. Correct the `--query` label.\n\n2. **The start-up log prints a glyph in place of the setting, low, confirmed**\n   - **Location:** `daemon.py:879-882` at the PR head. The defect is still on HEAD at `daemon.py:1397-1398`.\n   - **Cause:** `icons[\"unstable\"]` is the resolved glyph. The line reads `unstable=\\uf42e`, where the base wrote `unstable=ok`. The name of the icon set is never logged.\n   - **Fix:** Return the setting names from `read_config` and log `unstable=ok, icons=nerd`.\n\n3. **An `icons` value that the parser cannot read falls back in silence, low, confirmed**\n   - **Location:** `daemon.py:180-182`.\n   - **Cause:** The regex accepts only a lowercase value in double quotes. `icons = 'emoji'` is valid TOML, and it still gives Nerd glyphs, as do `\"Emoji\"` and `\"emojis\"`. No log line reports the fallback. With finding 1, a user who tries to leave the Nerd set stays on boxes.\n   - **Fix:** Accept both quote styles. Log each value that is not in `ICON_SETS`.\n\n4. **No test runs the decision path with the default set, low, confirmed**\n   - **Location:** `test_daemon.py:68-76`, the `emoji_for` and `decide` wrappers.\n   - **Cause:** Each decision test forces `EMOJI`. I changed `emoji_for` to compare against a literal `\"🛑\"` and to append a literal `\"💬\"`, and all 108 tests still passed. That change breaks every Nerd verdict.\n   - **Fix:** Run the 💬 cases and one fixture test over each table in `ICON_SETS`.\n\n5. **Two `reason` strings are not verified, low, plausible**\n   - **Location:** `daemon.py:338`, `fixtures/lookup_queue.json`.\n   - **Cause:** The fixture is built by hand. Public reports confirm `failed_checks`, `merged`, `checks_timed_out` and `invalid_merge_commit` in lowercase, but none shows `manual` or `merge_conflict`. If GitHub records a different string for a manual removal, that row reads 🪃, which the README denies.\n   - **Fix:** Record one manual removal from a live queue. Compare with `.lower()`.\n\n6. **The README states a rule order that the block does not have, low, confirmed**\n   - **Location:** the \"Two icon sets\" section of `README.md`.\n   - **Cause:** The text says the rules follow \"the order of the table above\" and \"the way `blocker_for` decides\". The block puts merged, closed and no PR after mergeable. The colours are still correct, because a token holds one blocker glyph and the 💬 rule is last.\n   - **Fix:** State the one constraint that matters: the 💬 rule must be last.\n\n7. **The manifest describes only emoji, low, confirmed**\n   - **Location:** `herdr-plugin.toml:5`.\n   - **Cause:** The description says \"One emoji per sidebar row\" and lists only emoji, while the default output is Octicons.\n   - **Fix:** Name both icon sets and the `icons` setting.\n\n8. **The position of a commit in the timeline is an assumption, low, plausible**\n   - **Location:** `daemon.py:386-388`, `queue_ejection`.\n   - **Cause:** `timelineItems(last: 1)` assumes that a pushed commit sorts after an earlier removal event. If GitHub places a `PullRequestCommit` by its commit date, a fix committed before the ejection and pushed after it leaves 🪃 in place. A force push is safe, because that event has its own time. I did not verify the rule that GitHub uses.\n   - **Fix:** Record a real response for this sequence and add it as a fixture.\n\n9. **The width of a token with two glyphs depends on the font variant, low, plausible**\n   - **Location:** `daemon.py:88-91`, `README.md:181-184`.\n   - **Cause:** kitty and WezTerm let a private-use glyph use a second cell only before a space. With a Nerd Font that is not the Mono variant, the first glyph of a verdict with 💬 can draw smaller than a single glyph. I did not test the herdr renderer.\n   - **Fix:** Recommend the \"Nerd Font Mono\" variant in the README.\n\nSources:\n- [Finding which PRs have been taken out of the Merge Queue due to failed status checks](https://www.jvt.me/posts/2026/08/11/github-merge-queue-prs/)\n- [5dive-ai/5dive#902](https://github.com/5dive-ai/5dive/pull/902)\n- [autumngarage/touchstone#1158](https://github.com/autumngarage/touchstone/pull/1158)\n- [PostOakLabs/ainumbers#1857](https://github.com/PostOakLabs/ainumbers/pull/1857)\n- [github/gh-stack discussion #223](https://github.com/github/gh-stack/discussions/223)\n- [digitaldrywood/detent#2474](https://github.com/digitaldrywood/detent/issues/2474)\n- [GitHub Changelog: pull request commits now ordered chronologically](https://github.blog/changelog/2020-07-14-pull-request-commits-now-ordered-chronologically/)\n- [Nerd Fonts glyphnames.json](https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/glyphnames.json)",
+  "ttft_ms": 2177,
+  "type": "result",
+  "duration_ms": 317903,
+  "uuid": "6e425c1a-8ce7-4ac1-8fdc-e84780a480af",
+  "ttft_stream_ms": 1312,
+  "time_to_request_ms": 106,
+  "first_content_frame_ms": 1312,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "ste-concise",
+    "prompt": "review-pr-2",
+    "wall_s": 321,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": true,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "agents-output-styles:STE Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

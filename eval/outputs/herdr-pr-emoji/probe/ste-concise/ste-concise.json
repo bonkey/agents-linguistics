@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 2605,
+  "stop_reason": "end_turn",
+  "session_id": "bf86b194-164b-4a99-9bff-23b87bc3f71c",
+  "total_cost_usd": 0.2149485,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 10223,
+    "cache_read_input_tokens": 10474,
+    "output_tokens": 157,
+    "output_tokens_details": {
+      "thinking_tokens": 83
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 10223,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 157,
+        "cache_read_input_tokens": 10474,
+        "cache_creation_input_tokens": 10223,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 10223
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 157,
+      "cacheReadInputTokens": 10474,
+      "cacheCreationInputTokens": 10223,
+      "webSearchRequests": 0,
+      "costUSD": 0.2149485,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 83,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 1,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The active output style is `agents-output-styles:STE Concise`: put the result first, write plain restricted English in the active voice, keep sentences short, and write no preamble, filler, hype, emoji, em dash or time estimate.",
+  "ttft_ms": 1932,
+  "type": "result",
+  "duration_ms": 2699,
+  "uuid": "f64e9259-8807-4eea-b619-b5b26f6e7eac",
+  "ttft_stream_ms": 1249,
+  "time_to_request_ms": 96,
+  "first_content_frame_ms": 1250,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "ste-concise",
+    "prompt": "probe",
+    "wall_s": 5,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": true,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "agents-output-styles:STE Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

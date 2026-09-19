@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 252700,
+  "stop_reason": "end_turn",
+  "session_id": "0ecf8fef-8a51-42fc-9339-f36757b176c8",
+  "total_cost_usd": 2.683839,
+  "usage": {
+    "input_tokens": 26,
+    "cache_creation_input_tokens": 77401,
+    "cache_read_input_tokens": 689636,
+    "output_tokens": 19263,
+    "output_tokens_details": {
+      "thinking_tokens": 12720
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 77401,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 3118,
+        "cache_read_input_tokens": 86915,
+        "cache_creation_input_tokens": 960,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 960
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 26,
+      "outputTokens": 19263,
+      "cacheReadInputTokens": 689636,
+      "cacheCreationInputTokens": 77401,
+      "webSearchRequests": 0,
+      "costUSD": 2.683839,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 12720,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 16,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "No files were changed. The project is in good shape: 171 tests pass in about a second, failures are contained well, and the README is precise. The strongest proposals are one safety bug, one wrong-PR lookup and a handful of behaviour gaps. I reproduced the first two findings; the rest come from reading the code or from how GitHub behaves.\n\n## Code\n\n1. **A stale pidfile can kill an unrelated process** (`daemon.py:1294`).\n   - `take_over_pidfile` sends SIGTERM, then SIGKILL, to whatever PID the file names.\n   - After a crash or reboot that PID may belong to another of your processes. I pointed the file at a bystander `sleep` and the plugin killed it.\n   - Fix: check the process's command line (`ps -o command=`) before signalling, or hold an `fcntl.flock` on the file and only signal a live lock holder.\n2. **The branch lookup matches pull requests from forks** (`daemon.py:594`).\n   - `headRefName` ignores which repository the head branch lives in.\n   - For `cli/cli`, the last three pull requests from a branch named `trunk` all come from strangers' forks.\n   - Today this only shows up as the 🚪 that the README blames on \"a release sync\". An open fork PR from `main` or `patch-1` would put a stranger's state on your row.\n   - Fix: also ask for `isCrossRepository`, fetch `last: 5`, and skip any PR whose head is a fork. Prefer an OPEN PR over a newer closed one.\n3. **More than 100 check contexts breaks the required-check logic** (`daemon.py:714`).\n   - A required check beyond the first page counts as \"never reported\", so the row stays 🟡 for good. A failing check out there is missed entirely.\n   - Fix: read `pageInfo.hasNextPage`, then either page through or skip the `expected` inference for that PR.\n4. **Configuration is read once, at start** (`daemon.py:1363`).\n   - Change `icons`, invoke `refresh`, and the row changes. Within one interval the running daemon repaints it with the old setting.\n   - Fix: re-read the file every cycle, which is cheap, and log values it rejects. Today `unstable = \"OK\"` is ignored silently.\n   - `tomllib`, where Python has it, would also accept `'single-quoted'` strings.\n5. **`states.json.tmp` is a shared temp path** (`daemon.py:1108`). The daemon and a `--once` run can write it at the same time. Put the PID in the temp file's name.\n6. **A hook's stderr is logged only when it exits non-zero** (`daemon.py:881`). Its warnings, such as \"page cap reached\", are lost. Log the last stderr line on success too.\n7. **`signoffCommand` cannot take arguments** (`daemon.py:880`), because the whole string is one argv. `shlex.split` would allow them and still use no shell.\n8. **`slug_from_url` rejects several valid GitHub remotes** (`daemon.py:951`).\n   - `https://user@github.com/…`, `ssh://git@ssh.github.com:443/…`, `git://` and `www.` all return an empty slug.\n   - GitHub Enterprise hosts and clones of a fork, where the PR lives upstream, are not supported at all.\n9. **Smaller points**\n   - Each cycle spawns two `git` processes per workspace and one `herdr` process per pane. The origin slug could be cached per path, and the publishes batched over the API socket.\n   - A big sidebar goes to GitHub as one unbounded request.\n   - The `icons` parameter of `blocker_for`, and its default, only ever receive `STATE_NAMES`. The function could simply return the state name.\n   - `states_of` relies on `decide` having mutated the pull requests first.\n   - The log is only truncated at start.\n\n## Behaviour\n\n- **`CHANGES_REQUESTED` reads 🛑**, which means \"cannot say why\", although the reason is known. It deserves a state of its own, ranked next to ❌.\n- **`BEHIND` reads ✅.** GitHub reports `BEHIND` only when the base branch requires up-to-date branches, so the merge button is actually disabled. A separate \"update branch\" state would be more honest. These two new states together need 17 colour rules, and herdr allows 16.\n- **Sorting ignores 💬 and the sign-off.** 👀💬 sorts under \"somebody else's turn\" although you have threads to answer. `states.json` would need to store the conversation flag (`daemon.py:805`).\n- **A failed hook drops the sign-off glyph at once.** A Jira timeout turns ✅🏁 into a bare ✅, which looks the same as \"no sign-off needed\". Either keep the last answer for one TTL or draw an \"unknown\" glyph.\n- **Repositories on rulesets get no 💬 and no 🟡 for an unreported required check.** The README admits this. Rulesets are now GitHub's default, so querying them is worth the work.\n- **Where the base branch has no protection, red CI reads 🆗**, because every check counts as optional. A setting that treats all checks as required in that case would help.\n- **A workspace without a worktree uses its first pane's working directory for every pane.**\n- **Jira example**\n  - A ticket rejected as \"Won't do\" falls in Jira's `done` category and reads 🏁.\n  - Hitting the page cap is silent.\n  - Lines 118 and 123 print a Python list (`['…']`) in the error message.\n\n## Tests\n\n- Nothing covers `take_over_pidfile`, `drop_pidfile`, `gh_graphql`, `read_pairs`, `workspace_rows`, `publish`, the `main` dispatch, or either example hook. The Jira hook's three pure functions would be easy to test.\n- There is no CI, although the README promises Python 3.9 and the tests have only run on 3.14. Add a GitHub Actions matrix over 3.9–3.14 on macOS and Linux. There are also no git tags for version 0.7.0.\n- Nothing guards the README against drift. One test could check the README's codepoints and colour rules, and the defaults in `config.example.toml`, against `NERD` and `DEFAULT_*`.\n- The test run prints log lines between the dots, and `GuardedCycle` swaps `daemon.cycle` by hand. `mock.patch` and `assertLogs`-style capture would fix both.\n- Add fixtures for a fork PR, more than 100 contexts, and `CHANGES_REQUESTED`.\n\n## README\n\n- **Stale text**\n  - Line 244 says \"five columns\"; there are six.\n  - The header comments of both examples leave out `unsatisfied`.\n  - The `parse_required` docstring says 2-tuple; it returns a 4-tuple.\n  - The `verdict_for` docstring says \"never wider than two\"; with a sign-off it is three.\n  - The `resolve` docstring and its log message leave out 🟠 and 💬.\n- **Contradiction:** `config.example.toml`, the Jira example and the `parse_signoff` docstring all say a row the hook leaves out \"keeps the glyph it has\". It loses it.\n- **Misplaced section:** lines 178–194, on re-runs and unreported checks, sit under \"The 💬 modifier\" but belong with the state mapping.\n- **Missing**\n  - How to apply a config change, since the daemon must be restarted.\n  - How the hook's environment variables reach a daemon that herdr starts.\n  - The `gh` token scopes the queries need.\n  - A short troubleshooting section.\n- The rationale outweighs the usage instructions. Moving it to a `DESIGN.md` would leave a README that installs and configures the plugin in one screen.\n\nI would do Code items 1 and 2 first. Item 1 can kill an unrelated process, and item 2 puts a stranger's pull request on your row.",
+  "ttft_ms": 2094,
+  "type": "result",
+  "duration_ms": 264945,
+  "uuid": "a5fdf04c-da6c-4fca-a344-517f9e7aac6e",
+  "ttft_stream_ms": 1421,
+  "time_to_request_ms": 360,
+  "first_content_frame_ms": 1421,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "concise",
+    "prompt": "review",
+    "wall_s": 267,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

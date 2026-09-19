@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 359703,
+  "stop_reason": "end_turn",
+  "session_id": "1d2f6632-64c0-412f-aeb8-9ff9519e5726",
+  "total_cost_usd": 2.98280175,
+  "usage": {
+    "input_tokens": 24,
+    "cache_creation_input_tokens": 68282,
+    "cache_read_input_tokens": 558887,
+    "output_tokens": 29544,
+    "output_tokens_details": {
+      "thinking_tokens": 21563
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 68282,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 3962,
+        "cache_read_input_tokens": 73351,
+        "cache_creation_input_tokens": 5405,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 5405
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 24,
+      "outputTokens": 29544,
+      "cacheReadInputTokens": 558887,
+      "cacheCreationInputTokens": 68282,
+      "webSearchRequests": 0,
+      "costUSD": 2.98280175,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 21563,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 14,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The most severe defect: `take_over_pidfile` sends SIGTERM, then SIGKILL, to any live process whose pid is in a stale `daemon.pid`. The fix for it, and for finding 3, is an `fcntl.flock` on the pid file, held for the life of the daemon.\n\nExperiments confirmed findings 1, 2, 4, 6 and 10. The other findings come from the code alone. No file changed, and `git status` shows only the untracked `.claude/` that was there at the start.\n\n## High\n\n1. `daemon.py:1302-1311`, `take_over_pidfile`: the takeover kills a process that it did not identify. Confirmed.\n   - Cause: the code trusts the number in `daemon.pid`, and `alive(old)` is the only check. The system can give the pid in a stale file to another process of the same user. In the experiment, a stale pid that named a `sleep 300` process ended that process.\n   - Fix:\n     - Take `fcntl.flock(LOCK_EX | LOCK_NB)` on the pid file and hold it until the daemon exits. The kernel releases the lock when the process ends, so a stale file has no holder.\n     - Send a signal only when another process holds the lock.\n     - Before the signal, check that `ps -p <pid> -o command=` contains `daemon.py`.\n\n2. `daemon.py:1392-1402`, `main`: three exit paths leave a stale pid file, which makes finding 1 possible. The SIGHUP path is confirmed.\n   - Cause:\n     - Only SIGTERM and SIGINT have a handler. SIGHUP ends the process and the `finally` block does not run. A hand-launched daemon gets SIGHUP when its terminal closes.\n     - The handlers are installed after `take_over_pidfile()`, and the `try` starts later. A signal in that window also skips `drop_pidfile()`.\n     - SIGKILL and a power loss always skip `drop_pidfile()`.\n   - Fix: install the handlers before the takeover, add SIGHUP, and call `take_over_pidfile()` inside the `try`. The lock of finding 1 makes the remaining stale files harmless.\n\n## Medium\n\n3. `daemon.py:1297-1314`, `take_over_pidfile`: two daemons that start together both survive.\n   - Cause:\n     - Read, kill and write are separate steps with no lock. Both starters read the same old pid, and both write. The last writer owns the file.\n     - The other daemon never reads the file again, so it polls in parallel.\n     - `open(PIDFILE, \"w\")` truncates the file before the write. A reader in that window gets `old = 0`.\n   - Fix: the lock of finding 1 removes the race. Without the lock:\n     - Compare the pid file with `os.getpid()` at the start of each cycle, and exit on a mismatch.\n     - Write the file through `os.replace`.\n\n4. `daemon.py:207-215`, `run`: a timeout kills the direct child only. Confirmed.\n   - Cause:\n     - `subprocess.run` calls `process.kill()` on one pid. A hook that is a script leaves its own children alive, and `examples/pr-signoff-jira` starts `curl`.\n     - In the experiment, `run([\"sh\", \"-c\", \"sleep 47 & wait\"], 1)` returned 124 and the `sleep` process stayed alive.\n     - A hook that hangs leaks one orphan each cycle.\n     - The SIGTERM exit has the same gap.\n   - Fix: use `Popen(..., start_new_session=True)`. On a timeout or an exit, call `os.killpg(process.pid, signal.SIGKILL)`, then `wait()`.\n\n5. `daemon.py:1031-1039`, `cycle`: a herdr that stops its answers stalls one cycle for `(workspaces + panes) × 10 s`.\n   - Cause:\n     - Each `publish` is a separate `herdr` process with a 10 s timeout, and they run in sequence.\n     - A `publish` failure is logged, but it does not stop the loop and does not count toward the exit after three failures.\n     - With 30 workspaces of 3 panes each, one cycle can block for 20 minutes. The tokens expire after `3 × interval`.\n   - Fix: leave the loop at the first `publish` that returns 124 or 127, and return `False` from `cycle`.\n\n6. `daemon.py:864-867`, `gh_graphql`: an HTTP failure of `gh` loses its cause. Confirmed.\n   - Cause:\n     - `gh` prints a JSON object with a `message` key and no `errors` key on stdout, and the reason on stderr.\n     - The body is a `dict`, so the function returns `(None, [])`. `resolve` logs only \"no answer for N branch(es)\".\n     - With `GH_TOKEN=invalid`, stdout held `\"message\": \"Bad credentials\"` and stderr held `gh: Bad credentials (HTTP 401)`. Neither reached the log.\n     - I did not test a rate limit answer.\n   - Fix: when `rc != 0` and the body has no `errors`, return `[{\"message\": err.strip() or body.get(\"message\")}]`.\n\n7. `daemon.py:1270-1289`, `sort_workspaces`: two sorts in parallel, or a sidebar change during a sort, leave a group in a wrong or split order.\n   - Cause:\n     - The plan comes from one `workspace list` snapshot. The moves then go out one at a time, each on a new connection, with no lock.\n     - A key that is pressed twice starts two `--sort` processes, and their moves interleave.\n     - A move that names a closed workspace fails, and the sort stops with a partial result.\n   - Fix: hold `flock` on a lock file in `STATE` for the whole sort. After a failed move, read `workspace list` again and plan again one time.\n\n8. `daemon.py:965-968` and `daemon.py:1404-1411`: three slow answers from herdr end the daemon, and nothing starts it again.\n   - Cause:\n     - `herdr_json` returns `None` for a timeout (124), for bad JSON and for an absent server alike. Three such cycles in a row log \"herdr is gone\".\n     - The README says that only a server start runs the `[[startup]]` hook. The emoji stay away until then.\n   - Fix: treat 124 as \"busy\" and keep the loop. Count a failure only when a connection to `HERDR_SOCKET_PATH` is refused or the binary is absent.\n\n## Low\n\n9. `daemon.py:1229-1238` and `daemon.py:1263`, `read_reply` and `socket_request`: the reply check is weak.\n   - Cause:\n     - `settimeout(10)` applies to each `recv`. A peer that sends bytes without a newline holds the loop with no limit of time or size.\n     - The code never compares the `id` of the reply with `request_id`. The presence of a `result` key alone means success.\n     - A line that herdr sent before the reply would be read as the reply. The test stub sends only the reply, so no test covers this case.\n   - Fix:\n     - Set one deadline for the whole request.\n     - Cap the buffer at 1 MB.\n     - Skip a line whose `id` differs.\n     - Fail when an `error` key is present.\n\n10. `daemon.py:1317-1322` and `daemon.py:1309-1314`, `alive` and the end of the takeover. The zombie case is confirmed.\n    - Cause:\n      - `os.kill(pid, 0)` succeeds for a zombie. A dead daemon that its parent did not reap costs 5.5 s and a false \"ignored TERM\" log line.\n      - `kill` hides every error.\n      - After the SIGKILL, the code writes the pid file without a last `alive` check. An old daemon that survives then runs in parallel.\n    - Fix: check `alive(old)` again after the SIGKILL wait. If the old daemon is still there, log that fact and exit.\n\n11. `daemon.py:1108`, `save_states`: the daemon and `--once` share one temporary name.\n    - Cause:\n      - Both write `states.json.tmp`, and the `refresh` action runs `--once` while the daemon runs.\n      - When both save at the same time, the second `open(..., \"w\")` truncates the file of the first.\n      - One `os.replace` can then publish a partial document or fail with `ENOENT`. `load_states` returns `{}`, and `--sort` ranks every row last.\n    - Fix: use `tempfile.mkstemp(dir=STATE)`, or put the pid in the temporary name.\n\n12. `daemon.py:859`, `gh_graphql`: `gh` inherits `GH_HOST`.\n    - Cause:\n      - `slug_from_url` accepts only github.com remotes, but `gh api` sends the request to the host in `GH_HOST`.\n      - A user with that variable set gets no answer, or an answer for a different repository with the same `owner/name`.\n    - Fix: add `\"--hostname\", \"github.com\"` to the argv. `gh api --help` lists the flag.\n\n13. `daemon.py:859`, `gh_graphql`: the whole query is one argv element.\n    - Cause:\n      - Linux limits one argument to 131072 bytes. One branch alias measures 473 bytes, so the query exceeds the limit above 276 branches.\n      - `run` then returns 127, and every branch is unanswered.\n    - Fix: send the body on stdin with `gh api graphql --input -` and `run(..., text=json.dumps({\"query\": query}))`.\n\n14. `daemon.py:1019` and `daemon.py:207`: a dead network mount blocks the daemon with no limit.\n    - Cause:\n      - `os.path.isdir(path)` has no timeout.\n      - After a timeout, `subprocess.run` calls `process.wait()` with no timeout. A `git` child in uninterruptible sleep never ends.\n      - The loop has no watchdog.\n    - Fix:\n      - Remove the `isdir` test and let `git -C` fail inside its timeout.\n      - With the `Popen` change of finding 4, call `wait(timeout=...)` after the kill and abandon the child.\n\n15. `daemon.py:590` and `daemon.py:1385`: `--resolve` ends with a traceback on a slug without `/`.\n    - Cause:\n      - `read_pairs` accepts any text left of the tab, and `lookup_query` unpacks `slug.split(\"/\", 1)` into two names.\n      - `--query` validates its slug, and `--resolve` does not validate it. Neither mode runs inside `guarded_cycle`.\n    - Fix: in `read_pairs`, drop and log a pair whose slug is not `owner/name`.\n\n16. `daemon.py:1359-1362`, `daemon.py:1353` and `daemon.py:1313`: a state directory that cannot be written ends the daemon with a traceback.\n    - Cause: `main` hides the `makedirs` error. `redirect_to_log` and `take_over_pidfile` then open files in that directory with no `except`.\n    - Fix: log the `makedirs` error and return a non-zero status.\n\n17. `daemon.py:274-275` and `daemon.py:207-213`: the hook has no upper limits.\n    - Cause:\n      - `signoffTimeoutSeconds` accepts any positive number. A hook that hangs for more than `2 × interval` outlasts the token TTL.\n      - `run` reads all of the hook's stdout into memory.\n    - Fix: clamp the timeout to `interval`, and stop the read at a fixed size.\n\nFindings 7 and 9 depend on herdr behavior that I did not test: how `workspace.move_block` answers for a closed workspace, and whether herdr sends lines that nobody requested. `take_over_pidfile` has no test. `test_daemon.py:1818` checks only the path of the pid file.",
+  "ttft_ms": 1931,
+  "type": "result",
+  "duration_ms": 371808,
+  "uuid": "dc148c56-6aa6-45a3-bb05-5f60f786725c",
+  "ttft_stream_ms": 1134,
+  "time_to_request_ms": 228,
+  "first_content_frame_ms": 1134,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "ste-concise",
+    "prompt": "find-issues",
+    "wall_s": 374,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": true,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "agents-output-styles:STE Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

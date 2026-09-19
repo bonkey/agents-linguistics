@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 21825,
+  "stop_reason": "end_turn",
+  "session_id": "1b0d02ce-b60a-4104-a8d6-b1511c930e3d",
+  "total_cost_usd": 0.48319249999999997,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 18390,
+    "cache_read_input_tokens": 105770,
+    "output_tokens": 1777,
+    "output_tokens_details": {
+      "thinking_tokens": 279
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 18390,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 459,
+        "cache_read_input_tokens": 28166,
+        "cache_creation_input_tokens": 685,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 685
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 1777,
+      "cacheReadInputTokens": 105770,
+      "cacheCreationInputTokens": 18390,
+      "webSearchRequests": 0,
+      "costUSD": 0.48319249999999997,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 279,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 7,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "It is on purpose: GitHub only blocks a merge on *required* checks, and the plugin copies that. This is the behaviour the README calls out at `README.md:5`.\n\n1. **Only required checks can produce ❌.** `required_state` skips every check where `isRequired` is not true (`daemon.py:311`). A failing optional check therefore never sets `required_failing`, and the ❌/🟠 branch at `daemon.py:385` does not fire.\n2. **GitHub reports such a PR as `UNSTABLE`, not `BLOCKED`.** `UNSTABLE` is GitHub's status for a PR that can be merged while some check is failing. `blocker_for` maps it to `icons[\"unstable\"]` at `daemon.py:397`.\n3. **By default that glyph is 🆗 (`oct-check`), not the full ✅.** This default is set at `daemon.py:64`. The 🆗 means the PR can be merged but an optional check is red.\n\nRunning CI (🟡), a missing review (👀) and `BLOCKED` (🛑) are all checked before `UNSTABLE`. A PR with optional failures only reaches 🆗 when nothing else is holding it.\n\nNext: to change what it shows, set `unstable` in `config.toml`. `\"warn\"` gives ⚠️, `\"pass\"` gives ✅, and `\"ok\"` keeps 🆗.",
+  "ttft_ms": 2331,
+  "type": "result",
+  "duration_ms": 23398,
+  "uuid": "bf803d66-becf-48c4-8935-1e0c604509c8",
+  "ttft_stream_ms": 1184,
+  "time_to_request_ms": 202,
+  "first_content_frame_ms": 1185,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "i-have-adhd",
+    "prompt": "short",
+    "wall_s": 26,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": true
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

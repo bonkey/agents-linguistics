@@ -1,23 +1,23 @@
 import { useState } from 'react'
 import { ARM_BY_ID, ARM_IDS } from '../data/arms'
 import { HowItWorks } from './HowItWorks'
-import { KIND_CLASS } from './Landing'
-import { PROMPTS, PROMPT_ORDER } from '../data/samples'
+import { QuestionPicker } from './QuestionPicker'
+import { promptLabel, resolve, type Question } from '../data/samples'
 import { gamesFor, standings, totalPairs, type Comparison } from '../lib/ranking'
 
 interface Props {
   comps: Comparison[]
-  prompt: string
-  onContinue: (prompt: string) => void
+  question: Question
+  onContinue: (q: Question) => void
   onReset: () => void
   onBrowse: () => void
 }
 
-export function Results({ comps, prompt, onContinue, onReset, onBrowse }: Props) {
+export function Results({ comps, question, onContinue, onReset, onBrowse }: Props) {
   const rows = standings(ARM_IDS, comps)
   const [open, setOpen] = useState<string | null>(rows[0]?.arm ?? null)
   const max = rows[0]?.score ?? 1
-  const others = PROMPT_ORDER.filter((p) => p !== prompt)
+  const { project, prompt } = resolve(question)
 
   if (comps.length === 0) {
     return (
@@ -25,7 +25,7 @@ export function Results({ comps, prompt, onContinue, onReset, onBrowse }: Props)
         <h1>No picks yet</h1>
         <p className="muted">The ranking appears after your first pick.</p>
         <div className="actions">
-          <button className="primary big" onClick={() => onContinue(prompt)}>Start the test</button>
+          <button className="primary big" onClick={() => onContinue(question)}>Start the test</button>
           <button className="big" onClick={onBrowse}>Browse all answers</button>
         </div>
       </main>
@@ -47,7 +47,7 @@ export function Results({ comps, prompt, onContinue, onReset, onBrowse }: Props)
               <button className="row" onClick={() => setOpen(isOpen ? null : r.arm)} aria-expanded={isOpen}>
                 <span className="rank">{i + 1}</span>
                 <span className="name">
-                  {info.name} <span className={`chip ${KIND_CLASS[info.kind]}`}>{info.kind}</span>
+                  {info.name} <span className="chip">{info.kind}</span>
                 </span>
                 <span className="record">{r.wins}-{r.ties}-{r.losses}</span>
                 <span className="bar-wrap"><span className="bar-fill" style={{ width: `${(100 * r.score) / max}%` }} /></span>
@@ -65,18 +65,15 @@ export function Results({ comps, prompt, onContinue, onReset, onBrowse }: Props)
         })}
       </ol>
       <div className="actions">
-        <button className="primary" onClick={() => onContinue(prompt)}>
-          More picks on "{PROMPTS[prompt].slice(0, 40)}…" ({gamesFor(comps, prompt)}/{totalPairs(ARM_IDS.length)} pairs)
+        <button className="primary" onClick={() => onContinue(question)}>
+          More picks on {promptLabel(project, prompt)} ({gamesFor(comps, project.id, prompt.id)}/{totalPairs(ARM_IDS.length)} pairs)
         </button>
-        {others.map((p) => (
-          <button key={p} onClick={() => onContinue(p)}>
-            {gamesFor(comps, p) === 0 ? 'Try the ' : 'Continue the '}
-            {p === 'review' ? 'long review answers' : `"${PROMPTS[p].slice(0, 40)}…" answers`}
-          </button>
-        ))}
         <button onClick={onBrowse}>Browse all answers</button>
         <button className="link danger" onClick={onReset}>Reset my picks</button>
       </div>
+      <p className="muted small pick-another">Or pick another question:</p>
+      <QuestionPicker value={question} onChange={onContinue} />
+      <p className="muted small">{prompt.text}</p>
       <HowItWorks />
     </main>
   )

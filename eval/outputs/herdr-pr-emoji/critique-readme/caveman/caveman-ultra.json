@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 170525,
+  "stop_reason": "end_turn",
+  "session_id": "7442c4f5-ee35-4856-ab61-86be2cacafc4",
+  "total_cost_usd": 2.0646510000000005,
+  "usage": {
+    "input_tokens": 24,
+    "cache_creation_input_tokens": 63154,
+    "cache_read_input_tokens": 528124,
+    "output_tokens": 13386,
+    "output_tokens_details": {
+      "thinking_tokens": 8072
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 63154,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 5287,
+        "cache_read_input_tokens": 68785,
+        "cache_creation_input_tokens": 4830,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 4830
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 24,
+      "outputTokens": 13386,
+      "cacheReadInputTokens": 528124,
+      "cacheCreationInputTokens": 63154,
+      "webSearchRequests": 0,
+      "costUSD": 2.0646510000000005,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 8072,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 14,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "No files changed. I checked the README against `daemon.py`, `herdr-plugin.toml`, `config.example.toml`, `examples/` and the tests. `python3 -m unittest` runs 171 tests, all pass.\n\n## Wrong\n\n1. **`README.md:31-34` says to run \"it\" once by hand, but that does not start the daemon.** The `refresh` action runs `daemon.py --once`: one cycle, then exit. No loop runs until herdr restarts, so the emoji expires after the TTL. Edit:\n   > The daemon starts with the herdr server (`[[startup]]`), so restart herdr after installing. Without a restart, `herdr plugin action invoke bonkey.pr-emoji.refresh` runs one cycle only, and the emoji expires after three intervals (6 minutes at the default).\n\n2. **`README.md:244` says \"five columns of GitHub's own answer\", but stdin carries six.**\n   - `unsatisfied` is the sixth (`daemon.py:522`).\n   - Edit: \"a path, a timeout and the six columns above\".\n   - Outside the README, the header comments of both `examples/` hooks also list five columns.\n\n3. **`README.md:296` and `README.md:330` misdescribe the rule order.**\n   - The README says the rules follow \"the order of the table above\" and \"the way `blocker_for` decides\". They do not.\n   - The rules start at draft and end with merged, closed, no PR, 💬. The table and `blocker_for` start with no PR, merged, closed.\n   - A value carries one blocker glyph, so only the 💬 position matters.\n   - Edit for `:330`:\n   > Order matters in one place: the 💬 rule goes last. 💬 rides behind a blocker, so it must colour a cell only where it stands alone.\n   - Also delete \"in the order of the table above\" at `:296`.\n\n4. **`README.md:289` says \"The prose below and the table above\", but most of the emoji prose sits above that line.** Edit: \"This README names the emoji throughout, because…\".\n\n5. **`README.md:353-354` says a sort \"only moves what the key asks for\". That is not true.**\n   - A group lands as one block (`move_requests`, `daemon.py:1195-1198`).\n   - A workspace from another group that sits between two members ends up after the block.\n   - Add that sentence to the README.\n\n6. **`README.md:363-364` says \"the state of each workspace by name\", which reads as the workspace name.** The file maps `workspace_id` to a state name (`daemon.py:813`). Edit: \"maps each workspace id to the name of its state (`mergeable`, `failing`, …)\".\n\n7. **`README.md:429-436` says \"launch the loop by hand\", but every listed command is a one-shot.** The loop is bare `python3 daemon.py`. Add this line:\n\n       python3 daemon.py    # the loop; output goes to daemon.log, replaces the server-started daemon via the pid file\n\n## Missing\n\n8. **The Nerd Font requirement is missing from Install.**\n   - The default is `icons = \"nerd\"`, yet the intro example at `:8` shows emoji.\n   - A fresh install without a Nerd Font shows empty boxes.\n   - Only `config.example.toml:13` mentions the font.\n   - Edit `:14`: append \"A Nerd Font in the terminal, or `icons = \"emoji\"` (see [Two icon sets](#two-icon-sets)).\"\n\n9. **The README never says how a config change takes effect.**\n   - The loop reads `config.toml` once at start (`daemon.py:1363`).\n   - `--once` re-reads it, so `refresh` shows the new icons and the next loop cycle reverts them.\n   - Add under Configuration:\n   > The daemon reads the file at start. After a change, restart herdr or relaunch `python3 daemon.py`.\n\n10. **The config file is not parsed as TOML.**\n    - Each key has its own regex (`daemon.py:233-249`), because Python 3.9 has no `tomllib`.\n    - Single-quoted strings are silently ignored.\n    - Invalid values silently fall back to the default; only the interval floor is logged.\n    - Table headers are ignored.\n    - Add one paragraph for users, and one line in Development: \"a new config key needs a new regex in `read_config`\".\n\n11. **`signoffCommand` takes one executable path and no arguments.**\n    - The code runs `run([command])` (`daemon.py:880`), so `\"~/bin/x --flag\"` exits 127.\n    - `~` expands; `$VAR` does not.\n    - \"As one argv\" at `:211` does not tell a newcomer this.\n    - Add the wrapper pattern, which also answers how the `SIGNOFF_JIRA_*` variables reach a hook that the herdr server starts:\n\n           #!/bin/sh\n           export SIGNOFF_JIRA_URL=… SIGNOFF_JIRA_EMAIL=…\n           exec /path/to/examples/pr-signoff-jira\n\n12. **There is no Limitations section.** These facts are scattered or absent; collect them in one place:\n    - github.com remotes only, so no GitHub Enterprise Server (`slug_from_url`, `daemon.py:953`).\n    - Only the `origin` remote is read, so a pull request from a fork checkout against upstream reads ❔.\n    - A repository governed by rulesets has a null protection rule; the README mentions this only under 💬.\n    - Only the first 100 check contexts are read (`contexts(first: 100)`, `daemon.py:714`). The README mentions only the 100-thread cap.\n\n13. **`gh` prerequisites are incomplete.**\n    - The README does not name the token scope.\n    - It does not mention `gh auth status`.\n    - It does not say which permission makes `branchProtectionRule` readable.\n    - `:403` mentions SAML and gives no fix. Propose `gh auth refresh`, after you confirm that command.\n\n14. **`HERDR_SOCKET_PATH` at `:435` has no source.** Say where the value comes from. `HERDR_BIN_PATH` is honoured (`daemon.py:33`) and is undocumented.\n\n15. **Contributor basics are absent.**\n    - The Python 3.9 compatibility constraint is not stated as a rule for contributors.\n    - No formatter is named.\n    - No CI config exists in the repo.\n    - Nothing says how to record and anonymise a new fixture. The procedure lives only in the `test_daemon.py:4-23` header.\n    - The test classes are grouped by area, and the README does not say so.\n    - Nothing says when to bump `version` in `herdr-plugin.toml`.\n    - The commit message style is not described.\n\n16. **`:420` implies all logs land in `daemon.log`.** Only the loop redirects there (`redirect_to_log`). `--once`, `--sort` and `--query` log to stderr.\n\n## Unclear\n\n17. **`:4` names `mergr` with no definition and no link.** Add a clause that says what it is and link it.\n\n18. **Two different files are both called `config.toml`.** `:17` and `:37` mean herdr's own; `:412` means the plugin's. Name the path at first use. I did not verify that herdr's own file is `~/.config/herdr/config.toml`.\n\n19. **\"The second request\" appears at `:113` but is first defined at `:382`.** Link `[second request](#how-it-polls)`, or add a two-line primer before the State mapping prose.\n\n20. **\"Empty answer\" has two meanings at `:76-84`.**\n    - One meaning is a cleared token: no branch, a remote not on github.com, or a closed pull request on the trunk.\n    - The other is a kept glyph: `UNKNOWN`.\n    - Use \"cleared\" for the first and \"kept\" for the second, consistently.\n\n21. **The sort section never defines \"group\".** The terms drift between \"repository\", \"group\" and \"worktree group\". Define it once: \"A group is one repository: its main checkout (the parent) and its linked worktrees.\"\n\n22. **The sort table at `:342` uses its first data row as the header.** Add a real header: `| Order | States | Your move |`.\n\n23. **The colour block at `:302` uses a different row layout from Install.** It shows only `[ui.sidebar.spaces]`. Say that the same `rules` go in `[ui.sidebar.agents]`.\n\n24. **The intro at `:5` says \"reads as mergeable\", but the default glyph is 🆗, not ✅.** Add \"(🆗 by default, ✅ with `unstable = \"pass\"`)\".\n\n25. **The intro example at `:8` keeps personal branch names on one horizontal line.** The sort example uses `TASK-153`. Make the intro example vertical with generic names.\n\n## Structure\n\n26. **`:178-194` sits in the wrong section.** The three paragraphs cover re-run attempts, rollup `FAILURE` and unreported contexts. They explain ❌ and 🟡, yet they sit under \"The 💬 modifier\". Move them to State mapping, after the 🟠 paragraph at `:103`.\n\n27. **Rationale buries the usage.** State mapping runs 90 lines of design reasoning before Configuration appears. Proposed order:\n    1. Install\n    2. Configuration\n    3. State table\n    4. Icon sets\n    5. Sorting\n    6. Sign-off\n    7. How it polls\n    8. Limitations\n    9. Design notes (the current rationale prose)\n    10. Development",
+  "ttft_ms": 2209,
+  "type": "result",
+  "duration_ms": 174165,
+  "uuid": "1e2064a0-dd3f-40cf-be20-339814032dcb",
+  "ttft_stream_ms": 1189,
+  "time_to_request_ms": 204,
+  "first_content_frame_ms": 1189,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "caveman-ultra",
+    "prompt": "critique-readme",
+    "wall_s": 177,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "ultra",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 15038,
+  "stop_reason": "end_turn",
+  "session_id": "20465fe6-5907-47ca-aa1d-3a1ff8d62eaf",
+  "total_cost_usd": 0.43264575000000005,
+  "usage": {
+    "input_tokens": 6,
+    "cache_creation_input_tokens": 18114,
+    "cache_read_input_tokens": 55623,
+    "output_tokens": 1128,
+    "output_tokens_details": {
+      "thinking_tokens": 48
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 18114,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 504,
+        "cache_read_input_tokens": 24593,
+        "cache_creation_input_tokens": 3982,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3982
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 6,
+      "outputTokens": 1128,
+      "cacheReadInputTokens": 55623,
+      "cacheCreationInputTokens": 18114,
+      "webSearchRequests": 0,
+      "costUSD": 0.43264575000000005,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 48,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 4,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "By design. Plugin mirrors GitHub, and GitHub lets such PR merge.\n\n**GitHub side**\n- Branch protection blocks merge only on *required* checks. Non-required failure never blocks.\n- GitHub reports that case as `mergeStateStatus == UNSTABLE`: \"mergeable, with non-passing commit status\". Merge button stays green.\n- Required check failing gives `BLOCKED` instead.\n\n**Plugin side** (`daemon.py:397`, README state table)\n- Failing check counts only when `isRequired` is true. Then row shows 🟠 (others still running) or ❌ (all settled).\n- No required failure, no running checks, no missing review, then `UNSTABLE` falls to its own row.\n- Default glyph there is 🆗 (`oct-check`), not ✅. So \"mergeable, optional checks red\" stays distinct from clean ✅.\n\nThis was reason plugin exists: replace `mergr`, which showed such PR as broken (README.md:5).\n\nWant different reading? Set `unstable` in plugin `config.toml` (`config.example.toml:8`):\n\n```toml\nunstable = \"ok\"    # 🆗 default\nunstable = \"pass\"  # ✅ same as clean\nunstable = \"warn\"  # ⚠️ same glyph as conflict\n```\n\nOne caveat: check marked `isRequired: false` while branch protection lists its context in `requiredStatusCheckContexts` still counts as required (README.md:190-192). So truly optional failures only reach 🆗.",
+  "ttft_ms": 2330,
+  "type": "result",
+  "duration_ms": 16794,
+  "uuid": "4df6b102-ead5-4cc1-8a1f-fa43648d48de",
+  "ttft_stream_ms": 1218,
+  "time_to_request_ms": 147,
+  "first_content_frame_ms": 1218,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "caveman-full",
+    "prompt": "short",
+    "wall_s": 20,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "full",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

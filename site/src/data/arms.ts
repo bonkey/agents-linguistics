@@ -97,7 +97,7 @@ const BUILT_IN: ArmInfo[] = [
 
 const KINDS: ArmKind[] = ['built-in', 'custom style', 'plugin']
 
-/** Arms from bakeoff/arms.json, then any arm that has samples but no metadata at all. */
+/** Arms from eval/arms.json, then any arm that has samples but no metadata at all. */
 function extras(): ArmInfo[] {
   const known = new Set(BUILT_IN.map((a) => a.id))
   const meta = (raw as { arms?: Record<string, Partial<ArmInfo>> }).arms ?? {}
@@ -116,7 +116,7 @@ function extras(): ArmInfo[] {
   }
   for (const s of (raw as { samples: { arm: string }[] }).samples) {
     if (known.has(s.arm)) continue
-    out.push({ id: s.arm, name: s.arm, kind: 'custom style', summary: 'Added with ./run.sh arm. No description yet.', enable: '' })
+    out.push({ id: s.arm, name: s.arm, kind: 'custom style', summary: 'Added with ./run.py arm. No description yet.', enable: '' })
     known.add(s.arm)
   }
   return out

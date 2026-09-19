@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 22113,
+  "stop_reason": "end_turn",
+  "session_id": "7323ff85-bcb4-4f15-a2e9-7708f6f9bfe7",
+  "total_cost_usd": 0.5294987499999999,
+  "usage": {
+    "input_tokens": 8,
+    "cache_creation_input_tokens": 20837,
+    "cache_read_input_tokens": 84315,
+    "output_tokens": 1832,
+    "output_tokens_details": {
+      "thinking_tokens": 308
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 20837,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 936,
+        "cache_read_input_tokens": 28931,
+        "cache_creation_input_tokens": 2367,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 2367
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 8,
+      "outputTokens": 1832,
+      "cacheReadInputTokens": 84315,
+      "cacheCreationInputTokens": 20837,
+      "webSearchRequests": 0,
+      "costUSD": 0.5294987499999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 308,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 6,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "A PR like that shows as mergeable by design. The plugin copies GitHub, where only required checks can block a merge, and the README names this as the plugin's reason for existing (`README.md:5`).\n\n1. **Optional checks are ignored when looking for failures.** `required_state` skips every check where `isRequired` is not `True` (`daemon.py:311`). A failing optional check therefore never sets `required_failing`, and the ❌/🟠 rule at `daemon.py:385` does not fire.\n2. **GitHub reports the PR as `UNSTABLE`.** GitHub reports `mergeStateStatus == UNSTABLE` when a PR has a failing check but can still be merged, and its merge button stays enabled.\n3. **The plugin maps `UNSTABLE` to a glyph.** If the earlier rules don't match (conflict, required failure, running checks, missing review, queue ejection, `BLOCKED`), `blocker_for` reaches `status == \"UNSTABLE\"` at `daemon.py:397`. It returns `icons[\"unstable\"]`.\n\nThe default glyph is 🆗 (`oct-check`), not ✅, so the row still tells you an optional check failed.\n\nYou can change that with `unstable` in `config.toml`, which `icon_set` resolves at `daemon.py:170`:\n\n| `unstable` | Glyph | Effect |\n|---|---|---|\n| `\"ok\"` (default) | 🆗 | mergeable, optional failures visible |\n| `\"pass\"` | ✅ | same as a clean PR |\n| `\"warn\"` | ⚠️ | same glyph as a merge conflict |\n\nTo make optional failures show as a warning, set `unstable = \"warn\"`.\n\nTwo other rules take priority over the `UNSTABLE` glyph. While any check is still running (`rollup == PENDING`), the row shows 🟡 (`daemon.py:389`). While `reviewDecision == REVIEW_REQUIRED`, it shows 👀 (`daemon.py:391`).",
+  "ttft_ms": 2220,
+  "type": "result",
+  "duration_ms": 23298,
+  "uuid": "731aad80-8b3d-4144-983d-6b48d955317b",
+  "ttft_stream_ms": 1289,
+  "time_to_request_ms": 314,
+  "first_content_frame_ms": 1289,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "caveman-lite",
+    "prompt": "short",
+    "wall_s": 26,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "lite",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

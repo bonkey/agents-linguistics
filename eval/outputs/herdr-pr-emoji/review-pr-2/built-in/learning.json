@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 411107,
+  "stop_reason": "end_turn",
+  "session_id": "45669f80-58a4-4dea-bd97-07c130026e2c",
+  "total_cost_usd": 3.7375105,
+  "usage": {
+    "input_tokens": 30,
+    "cache_creation_input_tokens": 91680,
+    "cache_read_input_tokens": 870242,
+    "output_tokens": 33721,
+    "output_tokens_details": {
+      "thinking_tokens": 23667
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 91680,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2487,
+        "cache_read_input_tokens": 98749,
+        "cache_creation_input_tokens": 3405,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3405
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 30,
+      "outputTokens": 33721,
+      "cacheReadInputTokens": 870242,
+      "cacheCreationInputTokens": 91680,
+      "webSearchRequests": 0,
+      "costUSD": 3.7375105,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 23667,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 21,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "## Verdict: **merge**, with follow-ups\n\nPR #2 was already merged on 2026-09-10 as `39af215`, with no review. CodeRabbit was rate-limited and there are no human comments. I reviewed it as submitted (`c0baa8e..d1daf8a`) and did not modify any repo file. Nothing I found would have blocked it. All findings are medium or lower, and four of them are still open on `main`.\n\n### What I verified\n\n- **Tests:** 108 pass at the PR head and 76 at the base, as the PR claims.\n- **Refactor equivalence:** I rebuilt the harness that was not committed. All 165888 field combinations give identical results between base and head. The emoji and Nerd sets also agree on every state, including the two new fields.\n- **Codepoints:** all 15 Nerd Font codepoints match the upstream `glyphnames.json` name for name.\n- **Not verified:**\n  - I could not run live GraphQL because `gh` is unauthenticated, so the two merge-queue findings marked \"not confirmed live\" are plausible rather than confirmed.\n  - I could not tell whether herdr's `rules` feature exists at the manifest's `min_herdr_version = \"0.8.2\"`. The local 0.9.1 has it.\n  - I did not check glyph width in non-Mono Nerd Fonts.\n\n### Findings, most severe first\n\nLine numbers refer to the PR head, `d1daf8a`.\n\n**1. Medium: the new default breaks existing users silently.**\n- **Location:** `daemon.py:110` (`DEFAULT_ICON_SET = \"nerd\"`), README \"Two icon sets\" (`README.md:179`).\n- **Cause:** upgrading from 0.4.1 to 0.5.0 replaces every row's emoji with private-use codepoints. Without a Nerd Font those render as empty boxes. There is no upgrade note, the daemon cannot detect the font, and the log does not say which set is active.\n- **Fix:** add an upgrade note to the README and log `icons=<name>` at startup. Alternatively, keep `emoji` as the default and make `nerd` the opt-in.\n- **Status:** still open on `main` (`daemon.py:134`).\n\n**2. Low to medium: the way out of finding 1 fails silently.**\n- **Location:** `daemon.py:180-182`.\n- **Cause:** the regex only accepts a lowercase value in double quotes. I ran it:\n\n  | Setting | Result |\n  |---|---|\n  | `icons = 'emoji'` (valid TOML) | Nerd set, no log line |\n  | `icons = \"Emoji\"` | Nerd set, no log line |\n\n  The same pattern was harmless for `unstable`. Here it means a user without a Nerd Font sees empty boxes and nothing tells them why.\n- **Fix:** accept `['\"]` and log any unrecognised value, the way the interval floor already does.\n\n**3. Low to medium: `manual` assumes the person who dequeued the PR is you (design issue, not confirmed live).**\n- **Location:** `daemon.py:338`, `README.md:122`.\n- **Cause:** \"a person took it out and knows\" is only true if that person is the viewer. Merge queues are used in team repos, and a maintainer dequeuing your PR leaves it reading ✅ while nothing will merge it. That is the failure this PR set out to remove.\n- **Fix:** request `actor { login }` on the removal event and `viewer { login }` once per query. Exempt `manual` only when the two match.\n\n**4. Low: 🪃 depends on timeline order, and GitHub places commits by commit date rather than push time (not confirmed live).**\n- **Location:** `daemon.py:386-388` and `daemon.py:333-338`, plus the README claim at `README.md:116` (\"a fix erases it\").\n- **Cause:** a fix committed before the ejection and then pushed normally, or a cherry-pick that keeps its author date, sorts before the removal event. `last: 1` still returns the removal, so 🪃 comes back once the checks pass. Force-pushes are covered by their own event. The impact is mild, because 🪃 reads \"queue it again\", which is still true.\n- **Fix:** compare the event's `beforeCommit { oid }` with the PR's `headRefOid`. I believe `beforeCommit` exists on this event, but confirm by introspection. That removes the dependence on ordering.\n\n**5. Low: `emoji_for` compares glyphs instead of states.**\n- **Location:** `daemon.py:359`.\n- **Cause:** `verdict == icons[\"blocked\"]` relies on the blocked glyph being unique, and `icon_set` already gives two states the same glyph for `unstable`. There is no live bug, because a test enforces uniqueness.\n- **Fix:** return state names and map to glyphs last.\n- **Status:** already fixed on `main` (`STATE_NAMES`, `daemon.py:469`).\n\n**6. Low: the startup log prints a glyph instead of the setting.**\n- **Location:** `daemon.py:879-882`.\n- **Cause:** `unstable=%s` now formats `icons[\"unstable\"]`, so the log reads `unstable=\\uf42e`. The icon set is not logged at all.\n- **Fix:** log the setting names.\n- **Status:** still open on `main` (`daemon.py:1397`).\n\n**7. Low: the 🪃 path was never exercised against real data.**\n- **Location:** `fixtures/lookup_queue.json`, `test_daemon.py:21`.\n- **Cause:** the fixture was built by hand, which the PR discloses. Every other fixture in the repo was recorded from GitHub.\n- **Fix:** record one from a throwaway repo whose `merge_group` check fails on purpose.\n\n**8. Nit: the README colour rules contradict their own snippet.**\n- **Location:** `README.md:211` and `README.md:242`.\n- **Cause:** the text says the rules are in \"the order of the table above\" and \"ordered the way `blocker_for` decides\". The snippet starts at draft and puts merged, closed and no-PR last. This is harmless, because a token holds one blocker glyph and only the conversation rule has to come last.\n- **Fix:** say that instead.\n\n**9. Nit: the PR body is out of date.**\n- **Location:** the PR description.\n- **Cause:** it says the glyphs are \"monochrome… the plugin cannot change that\", but commits `43e6587` and `d1daf8a` show that herdr colours them.\n- **Fix:** edit the body.\n\n**10. Nit: PEP 8 blank lines.**\n- **Location:** `test_daemon.py:330-331`.\n- **Cause:** two blank lines sit inside `EmojiPrecedence` before the new methods.\n- **Fix:** reduce to one.\n\n`★ Insight ─────────────────────────────────────`\n- The `last: 1` timeline query stores the ejection state in GitHub, but it inherits GitHub's event ordering, which is why finding 4 exists. Comparing `beforeCommit` with `headRefOid` asks the same question without depending on order.\n- Findings 1, 2 and 6 share a cause: a default that can fail visibly was paired with config handling that was only safe when falling back to the default was harmless.\n`─────────────────────────────────────────────────`\n\nThe highest-value follow-ups are 1, 2 and 6 together, as one small change to `read_config` and the startup log.",
+  "ttft_ms": 1899,
+  "type": "result",
+  "duration_ms": 413412,
+  "uuid": "3b7d1de8-93f5-40a5-96ef-4727d667d2b6",
+  "ttft_stream_ms": 1330,
+  "time_to_request_ms": 301,
+  "first_content_frame_ms": 1330,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "learning",
+    "prompt": "review-pr-2",
+    "wall_s": 416,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Learning"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 309800,
+  "stop_reason": "end_turn",
+  "session_id": "8bd1134a-a4dd-4694-8e7a-2ce599a396db",
+  "total_cost_usd": 2.262922,
+  "usage": {
+    "input_tokens": 22,
+    "cache_creation_input_tokens": 44283,
+    "cache_read_input_tokens": 330968,
+    "output_tokens": 25886,
+    "output_tokens_details": {
+      "thinking_tokens": 16454
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 44283,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 5716,
+        "cache_read_input_tokens": 52718,
+        "cache_creation_input_tokens": 2039,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 2039
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 22,
+      "outputTokens": 25886,
+      "cacheReadInputTokens": 330968,
+      "cacheCreationInputTokens": 44283,
+      "webSearchRequests": 0,
+      "costUSD": 2.262922,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 16454,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 23,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: request changes** on PR #1, \"Resolve ssh config host aliases to github.com\".\n\nThe diagnosis is correct and `ssh -G` is the right way to resolve an alias. However, the cache can bring back the permanent silent failure the PR set out to fix (finding 1). Every fix below is small, so rejecting would be wrong.\n\nThe PR merges cleanly into current `main`, which is 15 commits ahead. Tests pass on the PR head (74) and on the merged result (173). The repo has no CI, so those local runs are the only check. `gh` was unauthenticated here, so I read the PR through the public API and `refs/pull/1/head`. Nothing was posted to GitHub and no file was changed.\n\nLine numbers below refer to the PR head `e9359c1`.\n\n## Findings, most severe first\n\n**1. Medium: \"not GitHub\" answers are cached for the life of the daemon, including failed lookups**\n- **Location:** `daemon.py:531-541`, where `SSH_HOST_CACHE[host] = answer` runs unconditionally.\n- **Cause:**\n  - A timeout (rc 124), a usage error (rc 255) and a missing `ssh` all store `False`, and nothing ever expires it.\n  - With a stubbed `run`, the first cycle timed out and the second cycle had a healthy ssh. The slug stayed empty and ssh was called only once.\n  - The same happens when the alias is added to `~/.ssh/config` after the daemon first saw the URL.\n  - Either way, that host's workspaces stay blank until the daemon restarts, and nothing is logged.\n- **Fix:**\n  - Cache only when `rc == 0`.\n  - Clear `SSH_HOST_CACHE` at the top of each `cycle()`, so it only avoids repeat lookups within one cycle.\n  - One `ssh -G` call takes about 7 ms here, once per distinct host per cycle of at least 60 s.\n  - Log a line when `rc != 0`, as `run_signoff` does.\n\n**2. Medium: an existing test now runs the real `ssh`**\n- **Location:** `test_daemon.py:757-764` (`test_other_remotes`).\n- **Cause:**\n  - The test calls `slug_from_url(\"git@gitlab.com:…\")` with no resolver, so it falls through to `ssh_host_is_github`.\n  - A spy on `run` recorded `['ssh', '-G', 'gitlab.com']`, and `SSH_HOST_CACHE` was left holding `{'gitlab.com': False}` after the test.\n  - The PR description says the tests should not depend on the machine's ssh config, and this one now does.\n- **Fix:** Pass `lambda host: False` in that test, or patch `daemon.run` in `Remotes.setUp` so any unexpected subprocess fails the test.\n\n**3. Medium: the code that reads `ssh -G` output has no tests**\n- **Location:** `daemon.py:523-542`.\n- **Cause:** Both new tests inject a fake resolver. Parsing the `hostname` line, handling `rc` and the cache are never exercised, and finding 1 sits in that code.\n- **Fix:**\n  - Use `mock.patch.object(daemon, \"run\", ...)`, the idiom already used at `test_daemon.py:1028`.\n  - Cover `hostname github.com` giving True and another hostname giving False.\n  - Cover `rc != 0` giving False without caching it.\n  - Cover a second call not spawning ssh again.\n\n**4. Low–medium: only the exact string `github.com` counts, and ports are not stripped**\n- **Location:** `daemon.py:539` and `daemon.py:548-554`.\n- **Cause:**\n  - GitHub's documented SSH-over-443 setup uses `HostName ssh.github.com`. An alias pointing there still comes back empty.\n  - `ssh://git@alias:22/owner/name` hands `alias:22` to ssh unchanged, and ssh echoes `hostname github.com:22`.\n  - GitHub's own `ssh://git@ssh.github.com:443/…` form fails the same way.\n- **Fix:** Accept `{\"github.com\", \"ssh.github.com\"}` after `rstrip(\".\")`, and drop `:port` from the `ssh://` host before asking ssh.\n\n**5. Low: the host reaches ssh unvalidated, so a leading `-` is read as an option**\n- **Location:** `daemon.py:535` and `daemon.py:554-557`.\n- **Cause:**\n  - An origin of `git@-oProxyCommand=x:o/n.git` produces `['ssh', '-G', '-oProxyCommand=x']`. Locally, `ssh -G -V` exited 0.\n  - The impact is contained. Only one argument is attacker-controlled, so ssh never gets a host and exits before reading its config or connecting.\n  - Anyone who can write `.git/config` already has stronger options. git itself blocks this case (\"strange hostname blocked\").\n- **Fix:**\n  - Use `[\"ssh\", \"-G\", \"--\", host]`.\n  - Reject hosts that do not match `[A-Za-z0-9][A-Za-z0-9._-]*` in `alias_path`.\n  - The second change also stops pointless ssh calls for origins like `C:/repos/app` or `foo/bar:baz`.\n\n**6. Low: the README is now incomplete**\n- **Location:** `README.md:14` and `README.md:377`.\n- **Cause:**\n  - The README lists the required tools and every subprocess each cycle runs. `ssh` is now an optional tool, and step 2 can run `ssh -G`.\n  - The author's claim that nothing in the README became wrong holds; the README is missing things rather than incorrect.\n  - `gh` uses one active account. A repo behind another account's alias comes back unanswered and logs `no answer for N branch(es)` every cycle. The daemon handles this correctly, but README readers are not told.\n- **Fix:** Add one clause to each line, plus a sentence about the multi-account case.\n\n**7. Nits**\n- **`daemon.py:534`:**\n  - **Cause:** `shutil.which(\"ssh\")` is redundant, because `run` already turns a missing binary into rc 127.\n  - **Fix:** Remove the check.\n- **`daemon.py:535`:**\n  - **Cause:** `GIT_TIMEOUT` is reused for a call that is not git.\n  - **Fix:** Add an `SSH_TIMEOUT` constant.\n- **`test_daemon.py:744`:**\n  - **Cause:** `alias = lambda …` is the only assigned lambda in the test file.\n  - **Fix:** Use a `def`.\n\n## What is good\n\n- Remotes that name `github.com` literally still match the prefix loop first, so the common case is unchanged.\n- The optional `host_is_github` argument keeps the two new tests independent of the machine's ssh config; the pre-existing test in finding 2 is the exception.\n- A repo the active `gh` account cannot see is logged as unanswered and does not break the rest of the lookup. Users with several accounts do not lose the emoji that already worked.\n- Two URL forms the description does not mention now resolve: `org-123@github.com:o/n.git`, and aliases produced by `insteadOf` rewrites, since `git remote get-url` expands those.\n- The author's offer of a follow-up PR that logs repositories seen against slugs resolved is worth accepting. It would also have made finding 1 visible.\n\nFor finding 1, the change is roughly:\n\n```python\nrc, out, _ = run([\"ssh\", \"-G\", \"--\", host], GIT_TIMEOUT)\nif rc != 0:\n    log(\"ssh -G %s exited %d, asking again next cycle\" % (host, rc))\n    return False            # not cached\n...\nSSH_HOST_CACHE[host] = answer\n```\n\nIt also needs `SSH_HOST_CACHE.clear()` at the top of `cycle()`.\n\n`★ Insight ─────────────────────────────────────`\n- This daemon logs every failure it contains and lets stale emoji expire through TTLs. A cache with no expiry and no log line goes against both habits, which is why finding 1 outweighs its size.\n- A cached \"no\" that came from a failed lookup is not the same as a cached \"no\" from a real answer. Cache only the real answers, and the cost is one 7 ms call per cycle.\n- The injected resolver protects only the tests that pass it. `test_other_remotes` relies on the default, so it silently picked up the real `ssh`.\n`─────────────────────────────────────────────────`",
+  "ttft_ms": 1839,
+  "type": "result",
+  "duration_ms": 312368,
+  "uuid": "05abb39b-8235-45c3-be47-6186e1f95bd7",
+  "ttft_stream_ms": 1208,
+  "time_to_request_ms": 220,
+  "first_content_frame_ms": 1209,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "explanatory",
+    "prompt": "review-pr-1",
+    "wall_s": 315,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Explanatory"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

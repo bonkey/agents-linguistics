@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 366927,
+  "stop_reason": "end_turn",
+  "session_id": "c0358a5a-c940-4224-8547-bcb4cad00fa7",
+  "total_cost_usd": 3.862646,
+  "usage": {
+    "input_tokens": 22,
+    "cache_creation_input_tokens": 109803,
+    "cache_read_input_tokens": 763464,
+    "output_tokens": 29510,
+    "output_tokens_details": {
+      "thinking_tokens": 20601
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 109803,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 6833,
+        "cache_read_input_tokens": 118937,
+        "cache_creation_input_tokens": 1327,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1327
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 22,
+      "outputTokens": 29510,
+      "cacheReadInputTokens": 763464,
+      "cacheCreationInputTokens": 109803,
+      "webSearchRequests": 0,
+      "costUSD": 3.862646,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 20601,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 16,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "I reviewed the project and changed nothing. The decision logic is careful and well tested, and the 171 tests pass on Python 3.14 and on 3.9.6. The weak spots are the parts that touch the outside world, and a few cases where the row shows a confident glyph that isn't true. Items marked **confirmed** I reproduced, using mocks and temp dirs so nothing was written to the repo. The rest come from reading the code.\n\n## Behaviour\n\n1. **Fork PRs are matched (confirmed live).** `pullRequests(headRefName:)` at `daemon.py:594` ignores the head repository. On `cli/cli`, the three newest PRs for `trunk` are all cross-repository. A workspace on `main` or `patch-1` can therefore show a stranger's PR. Ask for `isCrossRepository` with `last: 5` and take the newest PR from this repository.\n2. **A branch switch keeps the old branch's glyph (confirmed).** If the new branch is `UNKNOWN` or GitHub did not answer, `plan_publications` returns `None`, so the previous branch's ✅ stays for up to three intervals. `plan_states` does the same for `states.json`. Record `(slug, branch)` per workspace and clear the token when it changes.\n3. **A hook that fails once drops the sign-off glyph at once.** `✅📭` becomes a bare `✅`, the very misreading the sign-off glyph exists to prevent.\n   - Three places say the row keeps its glyph: `daemon.py:556`, `config.example.toml:31` and `examples/pr-signoff-jira:35`.\n   - `README.md:236` says both things in one sentence.\n   - Fix it by caching the last answer for the TTL window, or by drawing a \"sign-off unknown\" glyph.\n4. **Config is read once at startup, but `--once` re-reads it.** After you edit `icons`, the refresh action publishes emoji and the daemon overwrites them with Octicons two minutes later. The README also says reload-config does not re-run startup hooks, so there is no documented way to apply a change. Re-read the config each cycle.\n5. **An unknown flag starts a daemon (confirmed).** `daemon.py --help` and a typo such as `--onec` both fall through to daemon mode and take over the pidfile, which stops the daemon that was running. Reject unknown arguments.\n6. **`take_over_pidfile` kills whatever process holds the recorded PID.** It sends TERM and then KILL without checking what the process is (`daemon.py:1302`). After a crash, a reboot or a SIGHUP (which is unhandled at `:1394`), the PID in a stale file can belong to an unrelated process. Use `flock`, or check the command line first.\n7. **Design question on pending optional checks.** An optional check that failed reads 🆗, but one still running reads 🟡 (`:389`) and sorts under \"CI's turn\", even though GitHub would merge the PR. Either include `PENDING` in `required_targets` so the required checks decide, or document the asymmetry.\n8. **Remote detection is narrow (confirmed).** Seven common URL forms return an empty slug:\n   - `https://user@github.com/o/r.git`\n   - `https://x-access-token:abc@github.com/o/r`\n   - `git://github.com/o/r.git`\n   - `ssh://git@github.com:22/o/r.git`\n   - `git@github.com-work:o/r.git` (host aliases)\n   - `git@GitHub.com:o/r.git`\n   - `ssh://git@ssh.github.com:443/o/r.git`\n\n   Only `origin` is read, so a fork workflow where the PR lives upstream always reads ❔.\n9. **Every error path exits 0** (`:1372-1390`). A refresh action with no `gh`, or with herdr unreachable, looks like a success.\n\n## Code\n\n- **Null nodes cost the whole cycle (confirmed in three places).** `parse_lookup` at `:646`, `required_state` and `conversation_block` all raise `AttributeError` on a null node. That contradicts \"failures are contained per branch\".\n- **`\"\"` means two different things.** In `blocker_for` it means both \"clear the row\" and \"leave it alone\", and `decide` works out which at `:791`. Return `None` when there is no verdict.\n- **Vestigial `icons` parameter.** `blocker_for` has one caller, and it passes `STATE_NAMES`. Make it `state_for(pr)` and drop the identity table.\n- **The \"pure decisions\" section mutates its input.** `apply_marks` runs twice and `verdict_for` runs twice per PR. One pass that yields `(state, conversation, signoff)` would produce both the glyphs and the states.\n- **Config parsing ignores valid TOML without saying so (confirmed).**\n   - Single-quoted strings, wrong case and unknown values are silently ignored.\n   - Keys inside any `[table]` are matched.\n   - The interval has no upper bound.\n   - Only the floor on the interval is logged.\n   - Use `tomllib` where available, log every rejected value, and carry one `Config` tuple instead of two tuples passed through five signatures.\n- **Startup log line (confirmed).** It prints `unstable=\\uf42e`, the glyph rather than the setting, and omits the icon set (`:1396`).\n- **Temp file collision.** `save_states` uses a fixed `.tmp` name (`:1108`), so the daemon and the refresh action can write the same temp file at once.\n- **Timeouts leave grandchildren running (confirmed).** Start the child with `start_new_session=True` and kill the whole process group.\n- **Silent truncation of checks.** `contexts(first: 100)` truncates silently. The limit on threads is documented, the limit on checks is not.\n- **Log rotation.** The log is truncated to zero, and only at startup.\n- **Examples:**\n   - Both headers and `README.md:244` say five columns, but there are six.\n   - The static hook's `IFS=tab read` collapses an empty column (confirmed: `review` came back as `CLEAN`). That is worth a comment in a file people will copy.\n   - The Jira `fail()` prints a list, as `['msg']`, at `:118` and `:123`.\n   - Its header says one request a cycle, but `/myself` makes it at least two.\n   - Its worst case is 75 s against the daemon's 20 s default timeout.\n   - `--fail-with-body` needs curl ≥ 7.76.\n\n## Tests\n\n- **Gaps in coverage.** The code that talks to herdr, `gh` and the filesystem is mostly untested:\n   - `cycle`, `publish` and `workspace_rows`\n   - `gh_graphql`, `run`, `read_pairs` and `--query`\n   - argument dispatch and the pidfile functions\n- **One cheap test covers most of that gap.** `SortEndToEnd` already stubs herdr and records refused calls. Add a stub `gh` serving the fixtures and you have an end-to-end `--once` test.\n- **Add a regression test for each confirmed bug above.**\n- **A test that does not test the README.** `test_the_whole_order_is_what_the_readme_says` (`:1350`) compares `SORT_ORDER` with itself. I ran a real check against the README and the manifest: all three tables, the 15 colour rules and the manifest legend agree with the code today. Keep that as a test, because the glyph tables are maintained by hand in five places.\n- **Test the examples.** Feed the static one `signoff_input` output, and load the Jira one with `importlib` to test its three pure functions.\n- **Hygiene:**\n   - The test output carries five log lines of noise.\n   - `GuardedCycle` swaps `daemon.cycle` by hand and passes `\"pass\"` as the icons (`:1205`).\n   - `__import__(\"shutil\")` is inlined at `:920` and `:1452`.\n   - `PAIR` at `:943` looks like a leftover internal name.\n- **No CI and no tags, though the manifest says 0.7.0.** Run the tests on Python 3.9 and the latest release, on Ubuntu and macOS, and tag releases.\n\n## README\n\n- **Nerd Font.** Install never says the default glyphs need a Nerd Font. The first mention is at line 259, and the title, tagline and sample line all use emoji.\n- **Misplaced paragraphs.** Lines 178–194, about re-runs, the rollup and expected contexts, sit under \"The 💬 modifier\" and belong in the state mapping.\n- **Order.** About 140 lines of rationale come before Configuration. Put the reference first and move the rationale to a \"Design notes\" section. It also duplicates the docstrings nearly word for word.\n- **Missing sections.**\n   - Troubleshooting: the log path, `gh auth status`, the PATH of a herdr-launched process, the Nerd Font, `--once`.\n   - How to apply a config change.\n   - Limits: github.com only, `origin` only, 100 checks.\n- **Sample line.** Line 8 still shows what look like real branch names (`ios-27-siri-ai-intents`, `apple-ads-interface`), although commit a5cc614 generalised the others.\n- **Manifest.** Its `description` is a ~700-character legend. One sentence would do.\n\n**Suggested order:** behaviour items 1–3 first, since those are wrong glyphs. Then 5 and 6, which are destructive. After that the null-node guards, the end-to-end `--once` test with CI, and the README install and troubleshooting sections.",
+  "ttft_ms": 1240,
+  "type": "result",
+  "duration_ms": 373611,
+  "uuid": "362a2222-073f-44f4-8cb4-37272d98b359",
+  "ttft_stream_ms": 1172,
+  "time_to_request_ms": 166,
+  "first_content_frame_ms": 1172,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "default",
+    "prompt": "review",
+    "wall_s": 376,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

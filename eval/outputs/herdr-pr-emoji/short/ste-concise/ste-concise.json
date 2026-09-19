@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 24831,
+  "stop_reason": "end_turn",
+  "session_id": "0fee4ba3-c18d-4531-b9cc-f31472370df6",
+  "total_cost_usd": 0.635166,
+  "usage": {
+    "input_tokens": 12,
+    "cache_creation_input_tokens": 24892,
+    "cache_read_input_tokens": 149424,
+    "output_tokens": 1997,
+    "output_tokens_details": {
+      "thinking_tokens": 109
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 24892,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 611,
+        "cache_read_input_tokens": 34063,
+        "cache_creation_input_tokens": 1303,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1303
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 12,
+      "outputTokens": 1997,
+      "cacheReadInputTokens": 149424,
+      "cacheCreationInputTokens": 24892,
+      "webSearchRequests": 0,
+      "costUSD": 0.635166,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 109,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 8,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The search is complete. The answer follows.\n\nThe plugin shows that PR as mergeable by design, because GitHub lets you merge it. Branch protection blocks a merge only on required checks. GitHub reports this case as `mergeStateStatus == UNSTABLE`, and the merge button stays active.\n\n**How the code reaches that verdict:**\n\n- `required_state` at `daemon.py:311` skips every context where `isRequired` is not `True`. A failing optional check never sets `required_failing`, so the ❌ rung at `daemon.py:385` does not fire.\n- `blocker_for` then falls through to `daemon.py:397`. `UNSTABLE` returns `icons[\"unstable\"]`.\n- `icon_set` at `daemon.py:170` resolves that glyph from the `unstable` setting: `\"ok\"` gives 🆗 (`oct-check`, the default), `\"pass\"` gives ✅, `\"warn\"` gives ⚠️.\n- `SORT_ORDER` at `daemon.py:152` ranks `unstable` second, directly after `mergeable`.\n\nThe README names this as the reason the plugin exists (`README.md:4`): \"a PR whose only failing checks are non-required reads as mergeable, the way GitHub itself treats it.\" Commit 26635cc (8 September, 19:34) changed the default from ✅ to 🆗. The PR still counts as a pass, and the separate glyph tells you that an optional check is red.\n\nTwo limits apply. A missing review, a running required check, or a conflict ranks above `UNSTABLE` in `blocker_for`, so such a PR does not read 🆗. If you want the optional failure to look like a problem, set `unstable = \"warn\"` in `config.toml`.\n\nI read the code and the commit message. I ran no tests.",
+  "ttft_ms": 1935,
+  "type": "result",
+  "duration_ms": 25904,
+  "uuid": "f0c725a5-244c-4521-adbe-4ab40626256c",
+  "ttft_stream_ms": 1161,
+  "time_to_request_ms": 216,
+  "first_content_frame_ms": 1161,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "ste-concise",
+    "prompt": "short",
+    "wall_s": 28,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": true,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "agents-output-styles:STE Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

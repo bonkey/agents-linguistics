@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 243975,
+  "stop_reason": "end_turn",
+  "session_id": "9ca24c97-3ea1-406a-ba75-5ed219055be2",
+  "total_cost_usd": 2.48681575,
+  "usage": {
+    "input_tokens": 24,
+    "cache_creation_input_tokens": 68043,
+    "cache_read_input_tokens": 635863,
+    "output_tokens": 19335,
+    "output_tokens_details": {
+      "thinking_tokens": 13104
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 68043,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 6856,
+        "cache_read_input_tokens": 74247,
+        "cache_creation_input_tokens": 4257,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 4257
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 24,
+      "outputTokens": 19335,
+      "cacheReadInputTokens": 635863,
+      "cacheCreationInputTokens": 68043,
+      "webSearchRequests": 0,
+      "costUSD": 2.48681575,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 13104,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 15,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "I found five places where the README is wrong, eight things a first-timer needs that are missing, and six that are unclear. Proposed edits follow each item; no file was modified.\n\nI checked the README against `daemon.py`, the manifest, the example config, both example hooks and the installed herdr 0.9.1. The tests pass on Python 3.14.7 (171 tests in about a second).\n\n## Wrong\n\n1. **`README.md:244` says the hook gets \"five columns of GitHub's own answer\".** It gets six: `README.md:213` lists six and `signoff_input` writes six.\n   - Edit: \"it has a path, a timeout and the six columns above\".\n   - Both `examples/` script headers still list five columns.\n\n2. **`README.md:236` says \"Every kind of silence keeps the row where it is.\"** A row the hook leaves out is republished that same cycle without its third glyph. I ran `decide` both ways: an answered row gives `✅🎫`, a left-out row gives `✅`.\n   - Edit: \"Every kind of silence costs the third glyph on that cycle, and nothing else: …\".\n   - The same wrong claim is in `config.example.toml` (\"keeps the glyph it has\"), the `pr-signoff-jira` header and the `parse_signoff` docstring.\n\n3. **`README.md:296` and `:330` describe the colour rules as ordered like the table and like `blocker_for`.** They are not: the block starts at draft and puts merged, closed and no-PR after mergeable. The order is also irrelevant, because each value carries exactly one state glyph.\n   - Edit: replace both claims with \"The order of the fourteen state rules is free; only 💬 must come last, so it colours the cell only where it stands alone.\"\n\n4. **`README.md:178-194` sits under \"The 💬 modifier\" but is about ❌ and 🟡.** Those paragraphs cover newest-attempt logic, rollup `FAILURE`, and unreported required contexts.\n   - Edit: move them to the end of \"State mapping\", after line 106.\n\n5. **`README.md:289` says \"The prose below and the table above\".** Nearly all the prose is above that point. The hero row on line 8 also shows emoji, while a default install draws Octicons.\n   - Edit: move the sentence under the hero row: \"This README names the emoji throughout; a default install draws [Octicons](#two-icon-sets) instead and needs a Nerd Font.\"\n\n## Missing\n\n1. **The Nerd Font requirement is not in Install.** It appears only in `config.example.toml`. With the default `icons = \"nerd\"`, following Install exactly gives empty boxes.\n   - Edit: add to the Requires line \"…and a Nerd Font as the terminal font, or `icons = \"emoji\"`\".\n\n2. **`README.md:31-34` does not say what the refresh action actually does.** It runs `--once`, which publishes with a TTL of three intervals. The emoji therefore appear and vanish after six minutes, and the loop itself only starts with the next herdr server start.\n   - Edit: \"The loop is a `[[startup]]` hook and first runs when the herdr server next starts. Until then `…refresh` runs one cycle, whose emoji expire after three intervals.\"\n\n3. **Nothing says how a config change takes effect.**\n   - The loop reads `config.toml` once at start; `refresh` reads it every time. A refresh shows the new setting, and the loop repaints the old one on its next cycle.\n   - Edit: say the loop must be restarted, either by restarting the herdr server or with `nohup python3 daemon.py &`, which replaces the running copy through the pid file.\n   - The parser is a regex, not TOML: only double-quoted strings are read. `unstable = 'pass'` and `unstable = \"bogus\"` both silently fall back to `ok`.\n   - Edit: add one line stating this.\n\n4. **There are two files called `config.toml`.** `README.md:17` and `:37` mean herdr's own (`~/.config/herdr/config.toml`); `:412` means the plugin's own.\n   - Edit: name each file explicitly.\n   - Edit: add `mkdir -p \"$(herdr plugin config-dir bonkey.pr-emoji)\" && cp config.example.toml \"$_/config.toml\"`.\n\n5. **`signoffCommand` is a single executable path, and the README does not make that plain.** The code runs `run([command])`, so `\"python3 ~/bin/hook.py\"` exits 127. \"One argv with no shell\" does not convey this.\n   - Edit: \"the whole string is the path of one executable: no arguments, `~` expanded, `$VAR` not\".\n\n6. **Nothing says where the hook's environment comes from in normal use.** \"Inherits the daemon's environment\" appears only under Development. The server-started daemon has the herdr server's environment, so `SIGNOFF_JIRA_*` has no obvious home.\n   - Edit: recommend a wrapper script as the `signoffCommand` that exports the variables and then runs `exec …/pr-signoff-jira`.\n\n7. **There is no Troubleshooting or Limitations section.** Facts from the code worth putting there:\n   - \"gh is required; not starting\" is logged before output is redirected to `daemon.log`, and the daemon exits 0. The message lands in herdr's capture of the hook, not in the log. `herdr plugin log` exists; I did not check its arguments.\n   - Only the `origin` remote is read, so a fork checkout whose PR lives upstream reads ❔ forever.\n   - Only `github.com` URLs are recognised, so GitHub Enterprise is not supported.\n\n8. **The Development section has several gaps.**\n   - It says \"launch the loop by hand\" but never shows `python3 daemon.py`. It also does not say that the loop prints nothing (output goes to `daemon.log`) or that it stops the server's copy.\n   - `--query` and `--resolve` print in the configured icon set. By default that is private-use glyphs, which look like blank output. Edit: suggest `icons = \"emoji\"` while developing.\n   - `HERDR_SOCKET_PATH` is already set inside any herdr pane. Outside one, it is the `socket:` line of `herdr status`.\n   - The test run prints three `signoffCommand exited 127/3/124` lines that are expected. Edit: say so. Nothing checks the Python 3.9 floor, since there is no CI.\n   - There is no checklist for adding a state. It touches `EMOJI`, `NERD`, `SORT_ORDER` and `blocker_for`, both README tables, the colour block (which uses the last spare of the sixteen rules), the sort table, the `herdr-plugin.toml` description, and the tests.\n   - There is no fixture recipe. Edit: add `gh api graphql -f query=\"$(python3 -c 'import daemon; print(daemon.lookup_query([(\"o/r\",\"b\")]))')\"`, then anonymise as the header of `test_daemon.py` describes. I ran only the Python half of this recipe (it prints the query), not the `gh` call.\n   - Nothing says who bumps `version`. There are no tags and no changelog.\n\n## Unclear\n\n1. **`mergr` is never linked or explained** (`README.md:4` and `:376`).\n\n2. **The colour block at `README.md:301` redefines `[ui.sidebar.spaces]`.** It puts the token in a different row than Install does, and pasting both is a duplicate-table TOML error.\n   - Edit: \"replace the Install entry with this one; the same `rules` go on the `[ui.sidebar.agents]` entry\".\n\n3. **How a row with 💬 attached sorts is not stated.** `👀💬` sorts as 👀, because the blocker's name decides, yet the table lists 💬 in the first group.\n   - Edit: add one sentence saying so.\n\n4. **The sort table at `README.md:342` uses its first data row as the header.**\n   - Edit: add `| Order | States | Your move |`.\n\n5. **Some content is repeated.** The Nerd Font column appears in two tables, and the three-interval TTL is explained four times (lines 84, 239, 391 and 400).\n\n6. **The reader meets ninety lines of design rationale before Configuration.**\n   - Proposed order: Install, Configuration, State mapping (table only), 💬, Sign-off, Icon sets, Sorting, Troubleshooting, Development, then the rationale (\"How it polls\" and \"Why this order\", or a `DESIGN.md`), then Non-goals.\n\n## Not verified\n\n- herdr's sixteen-rule limit on colour rules.\n- Whether `herdr plugin link` coexists with an installed copy of the same id. Testing that would have changed herdr state.\n\nOne unrelated finding in the code: the `verdict_for` docstring says the token is \"never wider than two\", while the README correctly says three.",
+  "ttft_ms": 2012,
+  "type": "result",
+  "duration_ms": 248292,
+  "uuid": "a9cef808-0577-4eb3-b864-6c588d35587e",
+  "ttft_stream_ms": 1232,
+  "time_to_request_ms": 196,
+  "first_content_frame_ms": 1232,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "default",
+    "prompt": "critique-readme",
+    "wall_s": 251,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

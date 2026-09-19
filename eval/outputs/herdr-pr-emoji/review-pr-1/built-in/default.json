@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 249179,
+  "stop_reason": "end_turn",
+  "session_id": "d8ed161a-1953-445b-8ec2-805bb8fa2be7",
+  "total_cost_usd": 1.9874939999999999,
+  "usage": {
+    "input_tokens": 36,
+    "cache_creation_input_tokens": 41120,
+    "cache_read_input_tokens": 581536,
+    "output_tokens": 20387,
+    "output_tokens_details": {
+      "thinking_tokens": 12741
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 41120,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2796,
+        "cache_read_input_tokens": 48801,
+        "cache_creation_input_tokens": 2780,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 2780
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 36,
+      "outputTokens": 20387,
+      "cacheReadInputTokens": 581536,
+      "cacheCreationInputTokens": 41120,
+      "webSearchRequests": 0,
+      "costUSD": 1.9874939999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 12741,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 24,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "## Verdict: request changes\n\nPR #1 fixes a real bug with the right approach, but findings 1 and 2 should be fixed before merge. It merges cleanly onto current `main`, which is 15 commits ahead of the PR's base. Tests pass at the PR head (74, as claimed) and on the merge result (173). The README claim holds. Nothing downstream breaks: `parse_lookup` and `plan_publications` already handle a repo that `gh` can't see.\n\nLine numbers refer to the PR head `e9359c1`.\n\n## Findings, most severe first\n\n**1. Medium: one transient `ssh -G` failure disables a host until herdr restarts, and nothing is logged**\n- **Location:** `daemon.py:533-542`, `ssh_host_is_github`.\n- **Cause:**\n  - `answer = False` is stored in `SSH_HOST_CACHE` on every path, including a timeout (`rc == 124`), an ssh config parse error (`rc == 255`), and a missing `hostname` line.\n  - The cache never expires, and the process lives as long as herdr does.\n  - The 5 s `GIT_TIMEOUT` is reachable, because `ssh -G` runs `Match exec` commands. I confirmed this on OpenSSH 10.3 with a scratch config.\n  - I simulated one timeout followed by a healthy ssh. Both cycles returned an empty slug, ssh was called once, and the cache held `{'github.com-work': False}`.\n  - The result is the same silent empty sidebar this PR set out to fix.\n- **Fix:**\n  - Cache only a definitive answer: `rc == 0` and a `hostname` line was found.\n  - On failure, `log()` the host, return code and stderr, and leave the host uncached so the next cycle retries.\n\n**2. Medium: the suite now runs the real `ssh`, and the function that is the fix has no test**\n- **Location:** `test_daemon.py:757-764` (`test_other_remotes`), and the new tests at `742-755`.\n- **Cause:**\n  - `test_other_remotes` calls `slug_from_url(\"git@gitlab.com:…\")` with no resolver, so it now falls through to `ssh_host_is_github`.\n  - I spied on `daemon.run` during the `Remotes` tests. It recorded `['ssh', '-G', 'gitlab.com']` and left `SSH_HOST_CACHE == {'gitlab.com': False}`.\n  - That is the dependence on the test machine's ssh config that the PR description says the injected resolver avoids.\n  - Both new tests inject a lambda, so the `ssh -G` output parsing, the return-code handling and the cache are never exercised.\n- **Fix:**\n  - Pass `lambda h: False` in `test_other_remotes`.\n  - Add tests for `ssh_host_is_github` with `daemon.run` and `shutil.which` stubbed. Cover the `hostname github.com` line, another hostname, `rc != 0`, a missing ssh binary, and a cache hit.\n  - Clear `SSH_HOST_CACHE` in `setUp`.\n\n**3. Low–medium: `ssh://` URLs with a port never resolve**\n- **Location:** `daemon.py:547-549` and `554`, `alias_path`.\n- **Cause:**\n  - `rest.partition(\"/\")` leaves the port on the host, so `ssh://git@github.com-work:22/o/r` asks ssh about `github.com-work:22`.\n  - `ssh -G` echoes that string back as the hostname, so it never matches. I confirmed this.\n  - The commit message says ssh:// URLs are parsed \"generally\", which this contradicts.\n- **Fix:** strip `:port` from the host in the `ssh://` branch, and add a test case.\n\n**4. Low–medium: only the exact hostname `github.com` is accepted**\n- **Location:** `daemon.py:539`.\n- **Cause:**\n  - An alias using GitHub's documented SSH-over-443 setup (`HostName ssh.github.com`, `Port 443`) resolves to `hostname ssh.github.com`, which is treated as not GitHub.\n  - I confirmed this with a scratch config.\n  - Combined with finding 3, `ssh://git@ssh.github.com:443/…` fails twice over.\n- **Fix:** compare against `(\"github.com\", \"ssh.github.com\")`.\n\n**5. Low (hardening): a host taken from `.git/config` reaches ssh's argv unguarded**\n- **Location:** `daemon.py:535`, with the host produced at `554`.\n- **Cause:**\n  - The workspace path can be any pane's cwd, including an unpacked untrusted repo.\n  - A URL such as `-oProxyCommand=x:o/r` hands `-oProxyCommand=x` to ssh as an option.\n  - It is not exploitable today. With no destination argument left, ssh prints its usage text and exits 255, and I checked that nothing executed.\n  - Git blocks this class of hostname itself (\"strange hostname blocked\"), so the daemon should too.\n- **Fix:**\n  - Call `run([\"ssh\", \"-G\", \"--\", host], …)`.\n  - Return `\"\"` from `alias_path` when the host starts with `-`.\n\n**6. Low: a local path containing a colon is treated as scp-style**\n- **Location:** `daemon.py:553`.\n- **Cause:**\n  - `/srv/git/mirror:v2/app.git` runs `ssh -G /srv/git/mirror` and caches the result.\n  - The answer is still empty, so it is harmless, but it is a wasted subprocess.\n  - Git's rule is that a slash before the first colon means a local path.\n- **Fix:** add `if \"/\" in host: return \"\"` in the scp branch.\n\n**7. Nits**\n- **`daemon.py:534`:** `shutil.which(\"ssh\")` is redundant, because `run` already turns a missing binary into `rc 127`.\n- **`daemon.py:529-530`:** the docstring's \"runs once per repository per cycle\" describes the caller, not this cached function.\n- **PR description:** \"without opening a connection\" is accurate, but `Match exec` commands do run (see finding 1).\n\n## Not blocking\nIn a multi-account setup `gh` is logged in as one account. Repos behind the other account's alias now reach the GraphQL query and come back as not found. That is handled safely, but it writes two log lines per cycle for as long as it lasts.\n\nThe author's offer of a follow-up PR that logs \"repositories seen vs. slugs resolved\" is worth accepting, because it would also have exposed finding 1.\n\n## What I touched\nNo working-tree file was modified. To read the PR without `gh` auth I added two things to `.git`:\n- I fetched `refs/pull/1/head` into `refs/remotes/origin/pr-1`.\n- `git merge-tree --write-tree` wrote one tree object.\n\nTests ran in a `/tmp` scratch directory, which I deleted. `git update-ref -d refs/remotes/origin/pr-1` removes the ref. The fetched objects and that tree stay in `.git` until git garbage-collects them.",
+  "ttft_ms": 7318,
+  "type": "result",
+  "duration_ms": 253206,
+  "uuid": "15073059-e7fa-455f-a1f7-a80158f67df8",
+  "ttft_stream_ms": 1096,
+  "time_to_request_ms": 163,
+  "first_content_frame_ms": 1096,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "default",
+    "prompt": "review-pr-1",
+    "wall_s": 255,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

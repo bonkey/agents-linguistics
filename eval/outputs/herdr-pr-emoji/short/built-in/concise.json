@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 27750,
+  "stop_reason": "end_turn",
+  "session_id": "cafb39b8-c259-49bb-87b6-eb9e2a1c82bd",
+  "total_cost_usd": 0.5367999999999999,
+  "usage": {
+    "input_tokens": 14,
+    "cache_creation_input_tokens": 19404,
+    "cache_read_input_tokens": 150120,
+    "output_tokens": 2221,
+    "output_tokens_details": {
+      "thinking_tokens": 395
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 19404,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 575,
+        "cache_read_input_tokens": 29144,
+        "cache_creation_input_tokens": 734,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 734
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 14,
+      "outputTokens": 2221,
+      "cacheReadInputTokens": 150120,
+      "cacheCreationInputTokens": 19404,
+      "webSearchRequests": 0,
+      "costUSD": 0.5367999999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 395,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 8,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "That is the plugin's founding premise: the README opens with it (`README.md:5`). GitHub lets you merge over a failing non-required check, so the row should not say otherwise.\n\n- **Only required failures count as a failure:** `required_state` skips any check whose `isRequired` is not `True` (`daemon.py:311`). Only a required failure sets `required_failing`, which gives the failing glyph.\n- **What is left is `UNSTABLE`:** with nothing required failing, the row falls through to `mergeStateStatus`. `UNSTABLE` is what GitHub reports for a PR whose only failures are non-required.\n- **`UNSTABLE` gets a glyph of its own:** `blocker_for` returns `icons[\"unstable\"]`, the 🆗 or `oct-check` glyph (`daemon.py:397-398`). That is a plain check rather than the ✅ of `CLEAN`, so you can still tell \"mergeable\" from \"mergeable, and something optional is red\". It also sorts right after ✅ (`daemon.py:151-152`).\n\nYou have no plugin config of your own, so you are on the default `unstable = \"ok\"` and get that separate glyph. The setting lives in the plugin's `config.toml` (the `unstable` line in `config.example.toml:8`). `unstable = \"warn\"` draws it as ⚠️ instead, and `unstable = \"pass\"` makes it identical to ✅ (`daemon.py:177-180`).\n\n`BEHIND` is in `MERGEABLE_STATUS` and draws ✅. If GitHub reports `BEHIND` for a PR that also has an optional failure, the row shows a full ✅ with no hint of that failure. I inferred this from the code and have not seen it happen.",
+  "ttft_ms": 1699,
+  "type": "result",
+  "duration_ms": 28953,
+  "uuid": "a1d0d90b-6161-4ffd-9939-4e59c0ba38af",
+  "ttft_stream_ms": 817,
+  "time_to_request_ms": 25,
+  "first_content_frame_ms": 817,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "concise",
+    "prompt": "short",
+    "wall_s": 29,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

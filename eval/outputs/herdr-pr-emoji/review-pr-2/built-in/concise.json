@@ -1,0 +1,134 @@
+{
+  "duration_api_ms": 231186,
+  "stop_reason": "end_turn",
+  "session_id": "28b7ea24-a2a7-4475-b75a-4242e4cdeb94",
+  "total_cost_usd": 2.3589035,
+  "usage": {
+    "input_tokens": 34,
+    "cache_creation_input_tokens": 60598,
+    "cache_read_input_tokens": 779538,
+    "output_tokens": 18020,
+    "output_tokens_details": {
+      "thinking_tokens": 11217
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 60598,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2121,
+        "cache_read_input_tokens": 66670,
+        "cache_creation_input_tokens": 4402,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 4402
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 34,
+      "outputTokens": 18020,
+      "cacheReadInputTokens": 779538,
+      "cacheCreationInputTokens": 60598,
+      "webSearchRequests": 0,
+      "costUSD": 2.3081845,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 11217,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 48904,
+      "outputTokens": 363,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 0,
+      "costUSD": 0.050719,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 22,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: request changes.** PR #2 was already merged on Sep 10 (`39af215`), so these are follow-ups. Findings 1 and 3 are unchanged on `main`.\n\n`gh` is not logged in here, so I did not see PR comments or CI. I reviewed the merged range `c0baa8e..d1daf8a` locally and changed no repo files.\n\n- **Tests:** the PR head's suite passes, 108 tests.\n- **Glyphs:** all 15 Nerd Font codepoints match their `oct-*` names in an installed Nerd Font.\n- **Colour rules:** the README block parses as TOML and covers every state.\n- **Reason strings:** I could not check GitHub's real GraphQL `reason` values, because that needs a token.\n\nLine numbers are at the PR head `d1daf8a`.\n\n1. **Medium — `daemon.py:337-338`, `queue_ejection`, and `fixtures/lookup_queue.json`.**\n   - **Cause:** the two exempt reasons are lowercase `\"merged\"` and `\"manual\"`, compared case-sensitively. They come only from a hand-built fixture. GitHub's schema declares `reason: String` and documents no values. The only published dequeue reasons, in the webhook's `reason` enum, are uppercase and spelled differently: `MANUAL`, `MERGE`, `ALREADY_MERGED`, `CI_FAILURE` and so on. If GraphQL uses those, a PR someone removes from the queue by hand reads 🪃 until the next push. The docstring says that case must not happen. Because unknown reasons count as ejections by design, a wrong guess here fails without any sign.\n   - **Fix:** record one real `RemovedFromMergeQueueEvent` and use its strings. Until then, normalise with `reason.lower()` and exempt `{\"manual\", \"merge\", \"merged\", \"already_merged\"}`. Correct the fixture reasons and the README paragraph to match.\n\n2. **Medium — `daemon.py:110`, `DEFAULT_ICON_SET = \"nerd\"`, and `herdr-plugin.toml` description.**\n   - **Cause:** the default flips for every existing install that has no `icons` key. After upgrading to 0.5.0, rows show private-use codepoints, which render as empty boxes without a Nerd Font. With a Nerd Font they are monochrome until the user pastes 15 colour rules. The plugin name, the `$pr_emoji` token and the manifest's \"One emoji per sidebar row\" now describe the non-default set.\n   - **Fix:** keep `\"emoji\"` as the default and make `\"nerd\"` opt-in. If the flip is deliberate, put the font requirement and the `icons = \"emoji\"` escape hatch at the top of the README install section and in the manifest description.\n\n3. **Low — `daemon.py:880-881`, startup log.**\n   - **Cause:** `unstable=%s` is now fed `icons[\"unstable\"]`. The log prints a glyph, a private-use character by default, instead of `ok`, `pass` or `warn`. It never says which icon set loaded.\n   - **Fix:** have `read_config` also return the two setting names and log `icons=<name>, unstable=<name>`.\n\n4. **Low — `README.md`, \"Two icon sets\" section, around lines 210-240.**\n   - **Cause:** the text says the rules are \"in the order of the table above\" and \"ordered the way `blocker_for` decides\". The block actually starts at `draft` and puts `merged`, `closed` and `no_pr` near the end, so it matches neither. This does no harm today, since only 💬 can share a token with another glyph and its rule is last. But the stated reason for the order is wrong.\n   - **Fix:** reorder the block to match the table. Or replace both sentences with the one rule that matters: the 💬 rule must come last.\n\n5. **Low — `test_daemon.py:70-76`, module-level `emoji_for` and `decide` wrappers.**\n   - **Cause:** every behavioural test goes through the emoji set, so the default Nerd Font path is never tested end to end. I checked by hand that blocked plus an open conversation gives the conversation glyph under the default set, and it does.\n   - **Fix:** run the conversation and queue precedence cases once per entry in `ICON_SETS`, asserting on state keys.\n\n6. **Low, unconfirmed — `daemon.py:386-387`, `timelineItems(last: 1, …PULL_REQUEST_COMMIT…)`.**\n   - **Cause:** I believe GitHub orders timeline commits by commit date, not push date. If so, a fix committed before the ejection and pushed after it without force sorts ahead of the removal event, and 🪃 stays. The cost is small, since 🪃 and ✅ both mean \"queue it again\" at that point.\n   - **Fix:** confirm the ordering against the API. If it holds, compare the removal event's `createdAt` with the head commit's `pushedDate`, or state the limit in the README.",
+  "ttft_ms": 1812,
+  "type": "result",
+  "duration_ms": 233144,
+  "uuid": "bab11f1c-f595-464d-a954-21de943fad4e",
+  "ttft_stream_ms": 884,
+  "time_to_request_ms": 29,
+  "first_content_frame_ms": 885,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "concise",
+    "prompt": "review-pr-2",
+    "wall_s": 234,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

@@ -1,0 +1,133 @@
+{
+  "duration_api_ms": 409668,
+  "stop_reason": "end_turn",
+  "session_id": "667d5d02-9b07-4926-87be-f2ca4e40b190",
+  "total_cost_usd": 4.0495452499999995,
+  "usage": {
+    "input_tokens": 62,
+    "cache_creation_input_tokens": 92449,
+    "cache_read_input_tokens": 1969441,
+    "output_tokens": 30981,
+    "output_tokens_details": {
+      "thinking_tokens": 19461
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 92449,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2163,
+        "cache_read_input_tokens": 101346,
+        "cache_creation_input_tokens": 1564,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1564
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 62,
+      "outputTokens": 30981,
+      "cacheReadInputTokens": 1969441,
+      "cacheCreationInputTokens": 92449,
+      "webSearchRequests": 0,
+      "costUSD": 3.89101025,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 19461,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 113935,
+      "outputTokens": 2920,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 3,
+      "costUSD": 0.15853499999999998,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 43,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Verdict: merge. None of the six findings blocks it.\n\nPR #2 is already on `main` as merge commit `39af215`. `gh` isn't authenticated here, so I reviewed the five commits locally, `c0baa8e..d1daf8a`. The two medium findings are still present at HEAD `81e8933`, so they are follow-ups to file now.\n\n**Checks run:**\n- **Tests:** 108 pass at the PR head, against 76 at the base.\n- **Queue-exit reasons:** GitHub really does spell them `merged`, `manual` and `failed_checks`, so `queue_ejection` special-cases the right strings. I confirmed this against three unrelated projects that read the same GraphQL field.\n- **Octicon codepoints:** all 15 match the upstream Nerd Fonts 3.5.1 glyph table.\n- **Colour rules:** the README's claims about herdr's `rules` (at most 16, `contains`, first match wins) match herdr's config reference. The same 15-rule block is in your own `~/.config/herdr/config.toml`.\n- **Precedence:** 🚂 early, 🪃 between 👀 and 🛑, and queued pull requests skipped by the second request all behave as documented.\n- **Scratch copies:** I ran the code from exports outside the repo, one under `/tmp` and one under `$TMPDIR`. The first disappeared mid-review and I deleted the second. The working tree is untouched.\n\n## Findings, most severe first\n\n**1. Medium: upgrading silently changes what every existing install draws.**\n- **Where:** `daemon.py:110` (`DEFAULT_ICON_SET = \"nerd\"`), `README.md:8` and `:14`, `herdr-plugin.toml:5`.\n- **Cause:** an untouched 0.4.1 `config.toml` now resolves to the Nerd Font set (I ran this).\n    - Without a Nerd Font, every row shows empty boxes.\n    - The Install section still lists only herdr, Python, git and `gh`.\n    - The intro example and the manifest description still show emoji.\n    - The font requirement appears only at README line 181 and in `config.example.toml`.\n    - `--query` and `--resolve` output changes for any script that reads it.\n- **Fix:** add \"a Nerd Font, or `icons = \"emoji\"`\" to the Install requirements. Say the same in the manifest description. Fix 2 adds the missing log line.\n\n**2. Medium: the start-up log line lost the setting it used to print.**\n- **Where:** `daemon.py:879-882`.\n- **Cause:** `read_config` now returns the resolved glyph table, so the line formats `icons[\"unstable\"]`.\n    - It prints `unstable=\\uf42e`, a private-use character, where it used to print `unstable=ok` (I ran this).\n    - The chosen icon set is never logged.\n    - An unrecognised value such as `icons = 'emoji'` or `\"Emoji\"` falls back to the Nerd Font set with no log line (I ran this too).\n- **Fix:** keep the two setting names and log `unstable=%s, icons=%s`, plus one line when an `icons` value is rejected.\n\n**3. Low: two README sentences about rule order are wrong.**\n- **Where:** `README.md:211` and `:242`.\n- **Cause:** the rules run draft first and end with merged, closed, no PR, then 💬. That is neither \"the order of the table above\" nor the order `blocker_for` decides.\n    - It does no harm in practice: a token carries one blocker glyph, so only the 💬 rule's last position matters.\n- **Fix:** reorder the block, or say instead that the only constraint is 💬 last.\n\n**4. Low: the default path is barely tested.**\n- **Where:** `test_daemon.py:70-77` and the `IconSets` class.\n- **Cause:** the wrappers pin nearly every assertion to the emoji set.\n    - The Nerd Font default is checked on a single key.\n    - Nothing tests the 🛑→💬 swap in that set.\n    - Separately, `queue_cleared`, used as a reason \"GitHub has yet to invent\", very likely already exists.\n- **Fix:** loop the `Conversations` cases over both icon sets, and use an obviously made-up reason.\n\n**5. Low, not confirmed: 🪃 may stick after a fix.**\n- **Where:** `daemon.py:386-388`.\n- **Cause:** `timelineItems(last: 1)` assumes a commit lands in the timeline at the time it was pushed.\n    - If GitHub places it by commit date instead, a non-force push of a commit dated before the ejection sorts ahead of the removal event.\n    - 🪃 would then stay until the pull request is queued again.\n- **Fix:** also fetch the removal event's `createdAt` and compare it with the head commit's `committedDate`.\n\n**6. Note: a crash that predates this PR is now easier to reach.**\n- **Where:** `daemon.py:436-437`.\n- **Cause:** `nodes: [null]` raises `AttributeError` in `parse_lookup` at both base and head (I ran this). That costs the whole cycle.\n    - `timelineItems` is a non-null connection, so a GitHub error inside it would null the pull request's node and trigger exactly this.\n- **Fix:** treat a null node as unanswered.\n\nI could not establish which herdr release introduced token `rules`. If it is later than the `min_herdr_version = \"0.8.2\"` the manifest declares, the colour section of the README needs a version note.\n\nSources:\n- [Nerd Fonts glyphnames.json](https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/glyphnames.json)\n- [Jamie Tanna, PRs taken out of the merge queue](https://www.jvt.me/posts/2026/08/11/github-merge-queue-prs/)\n- [5dive PR #902](https://github.com/5dive-ai/5dive/pull/902)\n- [dismech PR #10989](https://github.com/monarch-initiative/dismech/pull/10989)\n- [ainumbers PR #1857](https://github.com/PostOakLabs/ainumbers/pull/1857)\n- [herdr config reference](https://herdr.dev/docs/config-reference/)\n- [GitHub changelog, PR commit ordering](https://github.blog/changelog/2020-07-13-pull-request-commits-now-ordered-chronologically/)",
+  "ttft_ms": 1756,
+  "type": "result",
+  "duration_ms": 402642,
+  "uuid": "dccadb00-0ba6-4112-a5b7-7934f6c04cde",
+  "ttft_stream_ms": 1338,
+  "time_to_request_ms": 302,
+  "first_content_frame_ms": 1338,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "default",
+    "prompt": "review-pr-2",
+    "wall_s": 405,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

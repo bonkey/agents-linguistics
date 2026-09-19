@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 258718,
+  "stop_reason": "end_turn",
+  "session_id": "6df260eb-6518-4be7-9c47-8df025102fa1",
+  "total_cost_usd": 2.5304664999999997,
+  "usage": {
+    "input_tokens": 18,
+    "cache_creation_input_tokens": 68743,
+    "cache_read_input_tokens": 427306,
+    "output_tokens": 20972,
+    "output_tokens_details": {
+      "thinking_tokens": 14156
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 68743,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 3497,
+        "cache_read_input_tokens": 74507,
+        "cache_creation_input_tokens": 4710,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 4710
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 18,
+      "outputTokens": 20972,
+      "cacheReadInputTokens": 427306,
+      "cacheCreationInputTokens": 68743,
+      "webSearchRequests": 0,
+      "costUSD": 2.5304664999999997,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 14156,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 16,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "I read the README against `daemon.py`, `herdr-plugin.toml`, `config.example.toml`, both example hooks and the tests, and modified no files; the working tree is still clean. I found five statements that are wrong, nine things that are missing, and six that are unclear, each with a proposed edit below.\n\nThe command `python3 -m unittest` runs as the README documents it: 171 tests, all OK. The glyph tables, the sort order, the two state and config paths, both internal links and the count of fifteen colour rules all match the code and the manifest.\n\n## Wrong\n\n**1. `README.md:31-34`: running `refresh` does not start the daemon.**\n- `refresh` is `daemon.py --once` (`herdr-plugin.toml:22`), which runs one cycle and exits.\n- Tokens are published with a TTL of three intervals (`daemon.py:1029`).\n- A new user who follows this sees emoji appear and then vanish about six minutes later.\n- Proposed text: \"The daemon starts with the herdr server (`[[startup]]`), so **restart herdr** after installing. To see emoji before that, `herdr plugin action invoke bonkey.pr-emoji.refresh` runs a single cycle, but nothing polls until the restart, and what it published expires after three intervals (six minutes by default).\"\n\n**2. `README.md:244`: \"five columns of GitHub's own answer\" is stale.**\n- `README.md:213` documents six columns, and the daemon sends six (`daemon.py:522`).\n- The phrase dates from c96d124; commit 65f1e99 added `unsatisfied` afterwards.\n- Proposed text: \"it has a path, a timeout and the six columns above.\"\n\n**3. `README.md:363`: \"Both sorts read `states.json`\" is not true.**\n- Only `--sort` reads it (`daemon.py:1278`); `--sort-name` uses the workspace list alone.\n- Proposed text: \"`sort` reads `states.json` next to the log… `sort-name` needs only herdr's workspace list. Neither asks GitHub anything, so…\"\n\n**4. `README.md:296` and `:330`: the colour rules are not in either order the README claims.**\n- The README says they follow \"the order of the table above\" and \"the way `blocker_for` decides\".\n- The rule block starts at draft and ends with merged, closed and no PR. The table and `blocker_for` both start with those three.\n- The order among the blocker rules cannot matter anyway, because a value holds exactly one blocker glyph.\n- Proposed text: \"A value carries exactly one blocker glyph, so the order of the first fourteen rules is free. The one constraint is that `oct-comment_discussion` comes last, so the blocker colours a two-glyph value and a lone 💬 still gets a colour.\"\n\n**5. `README.md:289`: \"The prose below and the table above name the emoji\" points the wrong way.**\n- It sits in the fifth section, and almost all the emoji prose is above it. It was left over from 607abf5.\n- Proposed edit: delete it and put one line under the sample at line 8: \"This README names states by their emoji; by default the sidebar draws the Nerd Font Octicon from the same table row.\"\n\n## Missing\n\n**6. The Nerd Font requirement is absent from Install.**\n- The default is `icons = \"nerd\"` (`daemon.py:134`), while line 8 shows emoji, so a user without a Nerd Font gets empty boxes.\n- Proposed addition after line 15: \"The default glyphs are Nerd Font Octicons. Use a Nerd Font in your terminal, or set `icons = \"emoji\"` ([Configuration](#configuration)).\"\n\n**7. How to apply a config change is not explained.**\n- The loop reads `config.toml` once, at startup (`daemon.py:1363`).\n- `refresh` re-reads it every time, so an `icons` edit appears after a refresh and the loop flips it back within 120 seconds.\n- Proposed text: \"The loop reads this file once, when it starts. After editing, restart herdr or relaunch the daemon by hand.\" You should pick which of the two to recommend.\n\n**8. Development says \"launch the loop by hand\", but the code block never shows how.**\n- Proposed addition to the block: `python3 daemon.py   # the loop itself: replaces the server's copy through the pid file; silent, output goes to daemon.log`\n\n**9. There is no Troubleshooting section.**\n- The `gh` check (`daemon.py:1372`) runs before `redirect_to_log()` (`:1392`). When the daemon herdr starts cannot find `gh` on its `PATH`, \"gh is required\" never reaches `daemon.log`, and the exit code is 0.\n- Proposed entries:\n  - \"Empty boxes → no Nerd Font.\"\n  - \"Nothing, and no `daemon.log` → `gh` is not on the PATH the herdr server runs with.\"\n  - \"Emoji vanished after a `refresh` → the loop is not running.\"\n  - \"❔ on a branch that has a PR → see Limitations.\"\n\n**10. Limitations are scattered or unstated.**\n- Only the remote named `origin` is read (`daemon.py:947`).\n- Only `github.com` URLs are recognised (`:953`), so GitHub Enterprise Server shows nothing.\n- In a fork workflow, where `origin` is the fork, the row reads ❔.\n- Only the first 100 check contexts are read (`:714`). The README mentions the 100-thread cap but not this one.\n- The rulesets caveat at `README.md:171-174` belongs with these.\n- Proposed edit: add a `## Limitations` section before Non-goals.\n\n**11. `signoffCommand` is a path, not a command line.**\n- It runs as `run([command])` (`daemon.py:880`), so arguments are impossible. `~` is expanded, and `$VARS` are not.\n- \"One argv with no shell\" at `README.md:211` does not tell a new reader this.\n- Proposed text: \"`signoffCommand` is the path of one executable (`~` expands, nothing else). No arguments, no shell; wrap anything longer in a script.\"\n\n**12. Config parsing is stricter than TOML, and the README does not say so.**\n- It uses regexes (`daemon.py:233-249`), since `tomllib` needs Python 3.11 and the floor is 3.9.\n- Only double-quoted, lowercase values are read. A bad value falls back to the default with no log line.\n- Proposed edit: add one sentence to Configuration saying this.\n\n**13. There is no contributor workflow.**\n- Adding a state touches `EMOJI`, `NERD`, `SORT_ORDER`, `blocker_for`, four places in the README and the manifest description.\n- Nothing enforces that these stay in sync. `test_the_whole_order_is_what_the_readme_says` compares `SORT_ORDER` with itself and never opens the README.\n- Proposed edit: add a checklist for adding a state, plus a recording recipe (the query-building half runs; I did not send it to GitHub):\n\n      gh api graphql -f query=\"$(python3 -c 'import daemon; print(daemon.lookup_query([(\"owner/name\", \"branch\")]))')\" > fixtures/new.json\n\n  Follow it with a pointer to the anonymising rules in the header of `test_daemon.py`.\n- Also say that there is no CI, so the tests are the only gate.\n\n**14. `mergr` is never explained or linked** (`README.md:4` and `:376`).\n\n## Unclear\n\n**15. `README.md:178-194` is in the wrong section.**\n- The three paragraphs on re-run checks, rollup `FAILURE` and expected contexts are about ❌ and 🟡, but they sit under \"The 💬 modifier\".\n- Proposed edit: move them into State mapping, and put a `### Why this order` heading over lines 80-143 so a user can skip the rationale.\n\n**16. `README.md:236`: \"Every kind of silence keeps the row where it is\" contradicts the next sentence.**\n- In fact the row is republished without the sign-off glyph on the next cycle (`daemon.py:789`).\n- Proposed text: \"Every kind of silence drops the sign-off glyph and nothing else.\"\n- `config.example.toml:31` and `examples/pr-signoff-jira:35` say the row \"keeps the glyph it has until its TTL runs out\", which is wrong for the same reason.\n\n**17. `README.md:342`: the sort table uses its first data row as the header.**\n- Proposed edit: use a header row `| Order | States | Whose move |`.\n- Also add: \"A row like 👀💬 sorts by its blocker; only a lone 💬 sorts as 💬.\"\n\n**18. `README.md:8`: the sample still shows `bonkey/purchase-to-unlock` and similar names.**\n- Commit a5cc614 generalised the other examples.\n- Proposed text: `✅ TASK-143   🟡 TASK-153   👀💬 TASK-132`, with a caption saying it shows the emoji set.\n\n**19. The two `[ui.sidebar.spaces]` layouts differ.**\n- The Install block at lines 25-29 and the colour block at lines 302-322 are different layouts.\n- The colour block also omits `[ui.sidebar.agents]`.\n- Proposed edit: say the rules go on whichever cell holds the token, in both tables.\n\n**20. `README.md:442`: the `STATE=open … --once` trick does not last.**\n- The running loop republishes with its own environment within one interval, so the glyph flips back.\n- Proposed edit: add one clause saying so.\n\nThe header comments in both example hooks still document five input columns, the same staleness as finding 2.\n\n`★ Insight ─────────────────────────────────────`\n- The README is strict about what the daemon decides and loose about how a user operates it; findings 1, 7 and 9 share one cause, that `--once` and the loop are different processes with different lifetimes.\n- The 3.9 floor is why the config is parsed by regex, since `tomllib` arrived in 3.11. The hidden cost is that a mistyped config value falls back to the default without a word.\n- A test named after the README does not read it. A real one could parse the markdown tables and compare them with `EMOJI`, `NERD` and `SORT_ORDER`, which would have caught the stale column count in finding 2.\n`─────────────────────────────────────────────────`\n\nI would fix 1 and 6 first, because a new user hits both within ten minutes of installing. After those I would take 2 to 5, which are one-line corrections.",
+  "ttft_ms": 1122,
+  "type": "result",
+  "duration_ms": 260651,
+  "uuid": "50d53d9a-1cb7-404e-b913-60b9b7199599",
+  "ttft_stream_ms": 1002,
+  "time_to_request_ms": 128,
+  "first_content_frame_ms": 1002,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "learning",
+    "prompt": "critique-readme",
+    "wall_s": 263,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Learning"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

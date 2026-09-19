@@ -1,7 +1,5 @@
 import { ARMS } from '../data/arms'
 
-export const KIND_CLASS: Record<string, string> = { 'built-in': 'k-builtin', 'custom style': 'k-custom', plugin: 'k-plugin' }
-
 export function Landing({ onStart, onBrowse, resumable }: { onStart: () => void; onBrowse: () => void; resumable: boolean }) {
   const startLabel = resumable ? 'Continue the test' : 'Start the test'
 

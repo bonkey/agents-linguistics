@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 35096,
+  "stop_reason": "end_turn",
+  "session_id": "6e3c5b6f-e81c-4fd1-912a-54fc6b880072",
+  "total_cost_usd": 0.8177785,
+  "usage": {
+    "input_tokens": 12,
+    "cache_creation_input_tokens": 31349,
+    "cache_read_input_tokens": 153114,
+    "output_tokens": 3048,
+    "output_tokens_details": {
+      "thinking_tokens": 133
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 31349,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 933,
+        "cache_read_input_tokens": 41142,
+        "cache_creation_input_tokens": 681,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 681
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 12,
+      "outputTokens": 3048,
+      "cacheReadInputTokens": 153114,
+      "cacheCreationInputTokens": 31349,
+      "webSearchRequests": 0,
+      "costUSD": 0.8177785,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 133,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 11,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "It's intentional. The README calls it the behaviour this plugin was built for: \"a PR whose only failing checks are non-required reads as mergeable, the way GitHub itself treats it\" (`README.md:5`). Two pieces of code produce it.\n\n**1. Only required checks can mark a PR as failing.**\n\n- One failed check of any kind is enough for GitHub to set `statusCheckRollup.state` to `FAILURE`, so the rollup can't tell a required failure from an optional one.\n- A PR with a `FAILURE` rollup therefore gets a second query that asks `isRequired(pullRequestNumber:)` for every check (`required_targets`, `daemon.py:664`).\n- `required_state` then drops anything that isn't required before it looks at results (`daemon.py:311`):\n\n  ```python\n  if context.get(\"isRequired\") is not True:\n      continue\n  ```\n\n- An optional failure therefore never sets `required_failing`, which is the only thing that produces ❌ or 🟠 (`daemon.py:385`).\n\n**2. With no required failure, GitHub's own merge state decides.**\n\n- GitHub reports `mergeStateStatus == UNSTABLE` for a PR that is mergeable but has a failing commit status. Branch protection only blocks on required checks, so the merge button still works.\n- `blocker_for` reaches that branch after every real blocker has been ruled out (conflict, required failure, running CI, missing review, queue ejection, `BLOCKED`) (`daemon.py:397`):\n\n  ```python\n  if status == \"UNSTABLE\":\n      return icons[\"unstable\"]\n  ```\n\nI ran `decide` on a PR with a required `build` that passed and an optional `lint` that failed. `required_state` returned `(False, False, [])`, meaning nothing failing, nothing running and nothing unsatisfied. The row showed 🆗.\n\nBy default the row shows 🆗 (`oct-check`), which is a different glyph from the ✅ of a fully green PR. The `unstable` setting in `config.toml` (`config.example.toml:8`) controls this:\n\n| `unstable =` | Shows | Meaning |\n|---|---|---|\n| `\"ok\"` (default) | 🆗 | mergeable, but an optional check is failing |\n| `\"pass\"` | ✅ | same glyph as a fully green PR |\n| `\"warn\"` | ⚠️ | flagged with the merge-conflict glyph |\n\nSet `unstable = \"warn\"` if you want optional failures to stand out. If you are seeing ✅ rather than 🆗, check whether your config sets `unstable = \"pass\"`.\n\nIf a check you consider required shows up here, GitHub doesn't mark it as required for that PR's base branch. `isRequired` comes from branch protection or rulesets, so the fix is there, not in the plugin.",
+  "ttft_ms": 1448,
+  "type": "result",
+  "duration_ms": 36629,
+  "uuid": "f146bca6-3ff8-427a-a5d5-47bf097a68c8",
+  "ttft_stream_ms": 1271,
+  "time_to_request_ms": 165,
+  "first_content_frame_ms": 1272,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "proactive",
+    "prompt": "short",
+    "wall_s": 39,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Proactive"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

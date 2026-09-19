@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 438926,
+  "stop_reason": "end_turn",
+  "session_id": "c0d76aef-ad26-4733-86c7-32bad43ae75d",
+  "total_cost_usd": 3.4782407499999994,
+  "usage": {
+    "input_tokens": 32,
+    "cache_creation_input_tokens": 73594,
+    "cache_read_input_tokens": 929763,
+    "output_tokens": 35472,
+    "output_tokens_details": {
+      "thinking_tokens": 25663
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 73594,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 8107,
+        "cache_read_input_tokens": 78151,
+        "cache_creation_input_tokens": 5904,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 5904
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 32,
+      "outputTokens": 35472,
+      "cacheReadInputTokens": 929763,
+      "cacheCreationInputTokens": 73594,
+      "webSearchRequests": 0,
+      "costUSD": 3.4782407499999994,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 25663,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 18,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "No files in the repo were changed. The probes ran in a temp directory outside the repo, which I removed afterwards. \"Confirmed\" below means a probe reproduced the behaviour; everything else is read from the code only.\n\n**1. HIGH: the takeover signals whatever process the pid file names.** Confirmed.\n- Location: `daemon.py:1297-1311` (`take_over_pidfile`), `1317-1322` (`alive`).\n- Cause:\n  - The only test is `os.kill(pid, 0)`, which does not check that the pid is a daemon. A stale file is left by SIGKILL, SIGHUP, a crash or power loss. If that pid has been reused, the takeover sends SIGTERM, then SIGKILL after 5 s, to an unrelated process. In the probe, a stale file named a `sleep` process, and that `sleep` exited with -15.\n  - `int()` also accepts negative numbers. A file holding `-1` passes the gate, because `alive(-1)` returned True. `kill(-1, SIGTERM)` then signals every process the user owns.\n- Fix:\n  - Hold `fcntl.flock(LOCK_EX | LOCK_NB)` on the pid file for the daemon's whole life, so the lock, not the number, proves a daemon is alive.\n  - The kernel drops the lock on any kind of death.\n  - Signal the recorded pid only while another process holds the lock.\n  - Reject `old <= 1`.\n\n**2. MEDIUM-HIGH: one pid file serves every herdr session.** The mechanism is certain from the code; the sequence in your local log is my interpretation.\n- Location: `daemon.py:52-58` (the path), `1393`.\n- Cause:\n  - The path ignores `HERDR_SOCKET_PATH`, but each daemon serves one server. Two sessions are running here (`default` and `tbtest`), and only one `bonkey.pr-emoji` state directory exists. I did not check whether herdr passes both sessions the same `HERDR_PLUGIN_STATE_DIR`.\n  - Session B's startup daemon kills session A's. Nothing restarts A's, because startup hooks run only when the server starts.\n  - When B stops, its daemon exits after 3 failures and no daemon is left. Your `daemon.log` for 2026-09-15 17:08–17:15 shows that shape, and no daemon is running now.\n  - The same gap applies to a hand launch with no reachable herdr. It kills the healthy daemon first, then exits 2 intervals later.\n- Fix:\n  - Key the pid file by socket path, for example `daemon-<sha1(HERDR_SOCKET_PATH)[:8]>.pid`.\n  - Run one `herdr workspace list` before the takeover.\n  - If that fails, exit without touching the pid file.\n\n**3. MEDIUM: there is no mutual exclusion, so two simultaneous starts both survive.** Confirmed.\n- Location: `1297-1314`, loop at `1403-1412`.\n- Cause:\n  - Read, kill and write are three unlocked steps. `open(PIDFILE, \"w\")` truncates before it writes, so a concurrent reader sees an empty file, gets `ValueError`, and kills nothing.\n  - In the probe, two daemons started together, both stayed alive, and the file named one of them. The loser never rechecks ownership, so it polls GitHub and publishes in parallel until its herdr dies. Later takeovers cannot see it.\n- Fix:\n  - Use the flock from finding 1.\n  - At the top of each cycle, exit when the pid file no longer names `os.getpid()`.\n\n**4. MEDIUM: a timeout kills only the direct child.** Confirmed.\n- Location: `daemon.py:207-215` (`run`).\n- Cause:\n  - `subprocess.run` kills the child pid, not its process group. With `sh -c 'sleep … & wait'` and a 1 s timeout, the `sleep` was still alive afterwards.\n  - `examples/pr-signoff-jira` spawns `curl` and `sh -c \"$SIGNOFF_JIRA_TOKEN_CMD\"`. A hung `op read` prompt would leak one process per cycle.\n  - The same happens when the daemon itself receives SIGTERM.\n- Fix:\n  - Use `Popen(..., start_new_session=True)`.\n  - On timeout and on any exception, call `os.killpg(proc.pid, signal.SIGKILL)`, then `wait()`.\n\n**5. MEDIUM: a hook that exits 0 is treated as a timeout if a descendant still holds stdout.** Confirmed.\n- Location: `daemon.py:207-213`.\n- Cause:\n  - `communicate()` waits for pipe EOF, not for the child to exit. In the probe the hook printed its answer and exited 0 immediately while a background child kept the pipe open. The result was `rc=124` after the full timeout, with the answer dropped.\n  - The cycle stalls for `signoffTimeoutSeconds` every time this happens.\n  - Separately, PIPE buffers unlimited output in memory, so a runaway hook can grow the daemon by gigabytes in 20 s.\n- Fix:\n  - Send stdout and stderr to `tempfile.TemporaryFile()`.\n  - Call `proc.wait(timeout)`.\n  - Then read the files, with a size cap.\n\n**6. MEDIUM-LOW: the socket reply is not matched to the request `id`.** Confirmed against a stub; I did not verify that herdr ever sends unsolicited lines.\n- Location: `daemon.py:1229-1267`.\n- Cause:\n  - The first line received counts as the reply. When another line came before the real reply, the result was `(False, {})`, although herdr would already have applied the move; the sort then stops half done. A reply carrying a different id plus a `result` field came back as `(True, …)`.\n  - `settimeout` applies per `recv`, not per request, so a peer that trickles bytes never times out.\n- Fix:\n  - Use one deadline per request.\n  - Read lines until `answer.get(\"id\") == request_id`.\n  - Skip the rest.\n\n**7. LOW-MEDIUM: a sort is N unlocked requests planned from one snapshot.**\n- Location: `daemon.py:1270-1291`.\n- Cause:\n  - Each move uses its own connection with a 10 s timeout, and a silent server blocked the probe for 10.0 s. A timed-out move is ambiguous, because the request was sent and herdr may still apply it. A failure leaves the group half moved.\n  - Two `--sort` runs (the key pressed twice) interleave their `before_workspace_id` anchors.\n- Fix:\n  - Take a `flock` on a lock file in `STATE` for the whole sort.\n  - On failure, list again and re-plan once.\n  - The planner skips groups already in order, so a rerun converges.\n\n**8. LOW-MEDIUM: signal handlers are installed late, and SIGHUP is not handled.**\n- Location: `daemon.py:1393-1395`, with `try` at `1402`.\n- Cause: The pid file is written before any handler exists, and the `try/finally` opens after `log`. A SIGTERM in those windows, or a SIGHUP at any time (a hand-launched terminal closing), ends the process and leaves the pid file behind. That stale file feeds finding 1.\n- Fix:\n  - Install TERM, INT and HUP handlers before `take_over_pidfile()`.\n  - Move the takeover inside the `try`.\n\n**9. LOW-MEDIUM: a slow herdr counts as a gone herdr, and a publish hang never counts at all.**\n- Location: `daemon.py:965-972`, `1011-1014`, `1031-1039`, `1404-1411`.\n- Cause:\n  - A return code of 124 (the 10 s timeout) counts the same as connection refused. Three slow polls make the daemon exit permanently, and nothing restarts it until the server restarts.\n  - Failures in `publish` are only logged. A herdr that answers list calls but hangs on `report-metadata` costs 10 s × (workspaces + panes) per cycle. The cycle then outlasts the TTL of 3 × interval, and the emoji flicker off.\n- Fix:\n  - Count only non-timeout failures toward exit.\n  - Abort publication after 3 consecutive publish timeouts and return False.\n\n**10. LOW: `gh api graphql` is not pinned to github.com.** Confirmed.\n- Location: `daemon.py:859`.\n- Cause: Slugs are filtered to github.com remotes, but `GH_HOST` in the server's environment redirects the query. With `GH_HOST=ghe.example.invalid`, gh reported \"error connecting to ghe.example.invalid\". With `--hostname github.com` added, it answered. Without the pin, every branch goes unanswered and rows go blank after the TTL.\n- Fix: Use `[\"gh\", \"api\", \"--hostname\", \"github.com\", \"graphql\", …]`.\n\n**11. LOW: start failures are invisible.**\n- Location: `daemon.py:1359-1362`, `1372-1374`, `1392`.\n- Cause:\n  - \"gh is required\" is logged before `redirect_to_log()` and the process exits 0. Nothing appears in `daemon.log`, and herdr sees success.\n  - A server started with a short PATH (on this machine `gh` is a mise shim) means the daemon is silently absent.\n  - A failure in `os.makedirs` is swallowed, and then `open(LOG)` raises uncaught.\n- Fix:\n  - In loop mode, redirect first.\n  - Exit non-zero.\n  - Log the makedirs error.\n\n**12. LOW: `--once` and the loop share one temp file.**\n- Location: `daemon.py:1108-1112`.\n- Cause: The refresh action runs beside the loop, and both write `states.json.tmp`. It is the same inode, so interleaved JSON can be renamed into place. `load_states` then returns `{}`, the sort ranks every row last, and retained states are lost.\n- Fix: Use `STATES + \".%d.tmp\" % os.getpid()`.\n\n**13. LOW: a zombie reads as alive.** Confirmed.\n- Location: `daemon.py:1305-1312`.\n- Cause: `kill(pid, 0)` succeeds on a zombie. If the old daemon's parent does not reap it, the takeover waits the full 5 s, logs \"ignored TERM\", and sends SIGKILL to a dead process.\n- Fix: Use the flock from finding 1.\n\nThese came out clean:\n- **git:** `git -C <pane cwd>` runs only `branch --show-current` and `remote get-url`. Neither refreshes the index or runs hooks, so `core.fsmonitor` in an untrusted repository never runs.\n- **Hook:** it runs as a single argv with no shell.\n- **gh:** `gh -f` does not expand `@file`.\n- **Exceptions:** a SIGTERM during a child raises SystemExit past `except Exception`, which kills the direct child and reaches `finally`.\n- **EPIPE:** a hook that ignores stdin is handled.\n\nOne side effect of my probing: my first probe's cleanup used `pgrep -f`, which matched its own wrapper shell and killed it (exit 144). I reran it matching exact command lines, and nothing in the repo was touched.",
+  "ttft_ms": 2680,
+  "type": "result",
+  "duration_ms": 470675,
+  "uuid": "3038e1c6-6e76-41e3-8238-03ef2ea79588",
+  "ttft_stream_ms": 1420,
+  "time_to_request_ms": 168,
+  "first_content_frame_ms": 1421,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "caveman-full",
+    "prompt": "find-issues",
+    "wall_s": 473,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "full",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

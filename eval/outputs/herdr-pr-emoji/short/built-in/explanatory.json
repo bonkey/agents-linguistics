@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 31396,
+  "stop_reason": "end_turn",
+  "session_id": "6a7b9eef-e467-44b6-9a37-acfd66eddb08",
+  "total_cost_usd": 0.7366995000000001,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 29226,
+    "cache_read_input_tokens": 123518,
+    "output_tokens": 2424,
+    "output_tokens_details": {
+      "thinking_tokens": 144
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 29226,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 938,
+        "cache_read_input_tokens": 38686,
+        "cache_creation_input_tokens": 1014,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1014
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 2424,
+      "cacheReadInputTokens": 123518,
+      "cacheCreationInputTokens": 29226,
+      "webSearchRequests": 0,
+      "costUSD": 0.7366995000000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 144,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 9,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "It is deliberate. The plugin is built to agree with GitHub, which still lets you merge a PR when only optional checks fail. `README.md:5` calls this the one behaviour the plugin was written for, as a replacement for `mergr`.\n\nThe decision is made in `blocker_for` (`daemon.py:342`), where the first matching condition wins:\n\n1. **Only required checks can produce a failure glyph.** `required_state` (`daemon.py:282`) skips every check where `isRequired` is not true (`daemon.py:311`). A failing optional check therefore never sets `required_failing`, and the ❌/🟠 branch at `daemon.py:385` is not taken.\n\n2. **The overall check rollup is not used as the verdict.** GitHub marks the whole rollup `FAILURE` as soon as any single check fails, required or not (`daemon.py:667-669`). The plugin uses a failed rollup only as a trigger for a second GraphQL query (`daemon.py:694`). That query asks each check whether it is required for this PR.\n\n3. **GitHub's own merge state decides the rest.** With no required failure, nothing running, no missing review and no block, the code reaches `status == \"UNSTABLE\"` (`daemon.py:397`). `UNSTABLE` is GitHub's `mergeStateStatus` for a PR that can be merged while some non-required check is failing.\n\nBy default the row does not show the full ✅. It shows 🆗 (`oct-check` in the Nerd Font set), which sorts just below ✅ (`daemon.py:152`). You can change that with the `unstable` setting (`config.example.toml:8`):\n\n| `unstable` | Glyph | Meaning |\n|---|---|---|\n| `\"ok\"` (default) | 🆗 | mergeable, but optional checks are failing |\n| `\"pass\"` | ✅ | same as a clean PR |\n| `\"warn\"` | ⚠️ | same as a merge conflict |\n\n`icon_set` (`daemon.py:170`) applies this setting once, when the glyph table is built, so `blocker_for` does not need to know the glyph is configurable.\n\nA PR that is `UNSTABLE` but still waiting for a required review shows 👀, because the review check at `daemon.py:391` comes before the `UNSTABLE` check.\n\n`★ Insight ─────────────────────────────────────`\n- The plugin checks required failures itself and only then falls back to `mergeStateStatus`. A PR with one failed required check and others still running would otherwise show only as `BLOCKED`.\n- `isRequired(pullRequestNumber:)` takes the PR number because whether a check is required depends on the base branch's protection rules. That is why this data comes from a second query limited to PRs that look broken (`required_targets`, `daemon.py:664`).\n`─────────────────────────────────────────────────`",
+  "ttft_ms": 1392,
+  "type": "result",
+  "duration_ms": 32835,
+  "uuid": "c42c7861-c525-44ec-9a21-9fdb5d3657e6",
+  "ttft_stream_ms": 1192,
+  "time_to_request_ms": 241,
+  "first_content_frame_ms": 1192,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "explanatory",
+    "prompt": "short",
+    "wall_s": 35,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Explanatory"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

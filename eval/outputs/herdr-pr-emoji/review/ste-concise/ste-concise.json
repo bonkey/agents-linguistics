@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 407970,
+  "stop_reason": "end_turn",
+  "session_id": "2ffbe35e-66df-4c9e-8e43-a985fa4e39d8",
+  "total_cost_usd": 3.51691275,
+  "usage": {
+    "input_tokens": 20,
+    "cache_creation_input_tokens": 84959,
+    "cache_read_input_tokens": 557131,
+    "output_tokens": 33565,
+    "output_tokens_details": {
+      "thinking_tokens": 25640
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 84959,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 16499,
+        "cache_read_input_tokens": 95067,
+        "cache_creation_input_tokens": 366,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 366
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 20,
+      "outputTokens": 33565,
+      "cacheReadInputTokens": 557131,
+      "cacheCreationInputTokens": 84959,
+      "webSearchRequests": 0,
+      "costUSD": 3.51691275,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 25640,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 15,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The decision logic is careful and well tested. The defects are in process control, config parsing, remote URL parsing and pagination. Correct defects 1 to 3 first: each fix is small, and each defect can break an install that works.\n\n**Validation:** `python3 -m unittest` passes, 171 tests, on Python 3.14.7. Three probes ran against functions of `daemon.py`: remote URLs, config values and the timeout path. No request went to GitHub or herdr. Defects 4 and 6 and the rulesets proposal therefore rest on the code and on my knowledge of the GitHub API. The test suite created `__pycache__/`. I removed it, and the tree is as I found it.\n\n## Defects\n\n1. `daemon.py:1366`: an unknown argument starts the loop.\n   - `python3 daemon.py --help`, or a typo such as `--onse`, reaches `take_over_pidfile()`. It stops the daemon that herdr started and sends its own output to the log file.\n   - Reject an unknown argument with a usage line and exit 2.\n2. `daemon.py:1302`: `take_over_pidfile` sends SIGTERM, then SIGKILL, to any live process with the stored pid.\n   - The pid file survives a reboot and a SIGKILL of the daemon, so a reused pid belongs to an unrelated process.\n   - Hold `fcntl.flock` on the pid file. The alternative is to compare `ps -p <pid> -o command=` with `daemon.py` before the signal.\n3. `daemon.py:1363`: the loop reads `config.toml` once, and `--once` reads it each time.\n   - After an edit of `icons`, `refresh` publishes the new set, and the loop overwrites it with the old set on its next cycle.\n   - The README does not say how a config edit takes effect.\n   - Read the config at the top of each cycle.\n4. `daemon.py:714`: `contexts(first: 100)` asks for no `pageInfo`.\n   - Re-runs keep every attempt, so a large pull request exceeds 100 contexts.\n   - A required context on page two then counts as `EXPECTED`. The row shows 🟡 or 🟠 for good, and the hook receives a false `EXPECTED`.\n   - Ask `pageInfo { hasNextPage }`. Then follow the cursor, or drop the `expected` rule for that pull request.\n5. `daemon.py:951`: `slug_from_url` rejects valid GitHub remotes.\n   - The probe returned an empty slug for each of these:\n     - `https://user@github.com/o/r.git`\n     - `ssh://git@github.com:22/o/r.git`\n     - `git://github.com/o/r.git`\n     - `http://github.com/o/r`\n     - `https://GitHub.com/o/r`\n     - `git@github-work:o/r.git`\n   - The row stays blank and the log file has no line about it.\n   - Use `urllib.parse` plus one pattern for the scp form, drop the user and the port, and fold the case of the host.\n   - Write one log line for each rejected remote.\n   - A host alias needs a config key or `ssh -G`.\n6. `daemon.py:594`: `pullRequests(headRefName:)` also matches a head branch in a fork.\n   - A pull request from the `main` of a fork becomes the newest match for `main`, and the trunk row shows its state.\n   - Ask `isCrossRepository` with `last: 5`, and take the newest pull request of the same repository.\n   - The reverse case has no support: with `origin` on a fork, the pull request lives in the parent and the row shows ❔.\n7. `daemon.py:207`: a timeout stops the direct child only.\n   - The probe `run([\"sh\", \"-c\", \"sleep 4; echo late\"], 1)` returned after 1 s and left `sleep` alive.\n   - A shell hook that starts `curl` leaves one `curl` behind per cycle.\n   - Set `start_new_session=True` and use `os.killpg` on timeout.\n8. `daemon.py:1372` and `daemon.py:1387`: every mode exits 0 without `gh`, and `--once` exits 0 when herdr is unreachable.\n   - The `refresh` action therefore reports success for no work.\n   - The `gh is required` line is written before `redirect_to_log()`, so it never reaches `daemon.log`.\n   - Exit 1 in the manual modes, and write the startup line to the log file.\n9. `daemon.py:244`: the config parser ignores a single-quoted TOML string.\n   - It drops `unstable = \"Warn\"` and `icons = \"emojis\"` with no log line.\n   - It accepts `signoffCommand = \"~/bin/hook --flag\"`, which then exits 127 on every cycle.\n   - Use `tomllib` on Python 3.11 and later, with the patterns as the fallback.\n   - Write a log line for each rejected value, and accept an array for the command.\n10. `daemon.py:1108`: the loop and `--once` write the same `states.json.tmp`. Two writers at one time can rename a partial file. Use `tempfile.mkstemp(dir=STATE)`.\n11. `daemon.py:1398`: the startup line prints `icons[\"unstable\"]`, which is the glyph. With the default set, the line shows a private-use codepoint after `unstable=`. Print the name of the setting.\n\n## Behaviour\n\nTwo of these proposals alter what a user sees: `BEHIND` and the `PENDING` rule. A config key for each makes the release reversible.\n\n- **`BEHIND`:** `BEHIND` shows ✅.\n  - GitHub reports `BEHIND` only where the base branch requires an up-to-date head. The merge button is disabled, and the errand is \"update the branch\".\n  - Give it a state of its own, ranked after `mergeable`. The README says one of the sixteen rule slots is free.\n  - The alternative is one sentence in the README.\n- **`PENDING`:** at `daemon.py:389`, `rollup == \"PENDING\"` overrides the exact result of the second request.\n  - Take a `BLOCKED` pull request with every required check green, one slow optional check and no review. It shows 🟡 for the whole optional check, where 👀 is the errand.\n  - That conflicts with the first paragraph of the README, where optional checks decide nothing.\n  - Where the marks exist and the protection rule was readable, let `required_running` decide alone.\n  - Keep the rollup as the fallback elsewhere. Under rulesets it is the only sign of an unreported required check.\n- **Rulesets:** `branchProtectionRule` is null under a ruleset, so an unreported required check shows 🛑 and 💬 never appears.\n  - The README documents that fallback.\n  - GitHub's GraphQL schema has repository rulesets with `RequiredStatusChecksParameters` and `requiredReviewThreadResolution`. Read both sources.\n  - Examine the schema first, because I did not query it.\n- **Detached HEAD:** in a rebase or a bisect, `git branch --show-current` prints nothing.\n  - The row clears, and `states.json` stores an empty state, which puts the worktree last in the next sort.\n  - Publish nothing for a checkout with no current branch, so the last glyph stays until its TTL.\n- **Repeated errors:** an expired `gh` token writes the same two lines on every cycle. The rows go blank after three intervals with no other sign. Write a repeated error once, until its text differs.\n- **Log file:** `redirect_to_log` truncates the file to zero, and only at launch.\n  - A daemon that lives for weeks never rotates it.\n  - The next launch deletes the evidence of why the previous daemon stopped.\n  - Rename the file to `daemon.log.1` at the limit, and read its size on each cycle.\n- **Request size:** one request carries every branch, with no chunk limit.\n  - I have no evidence of a failure, but a refused request blanks every row after the TTL.\n  - Split at a fixed count of aliases if a user reports `RESOURCE_LIMITS_EXCEEDED`.\n- **Subprocess count:** each cycle starts two `git` commands per workspace and one `herdr` command per workspace and per pane. Worktrees of one repository share `origin`, so cache the slug per `repo_key`.\n\n## Code\n\n- **`blocker_for`:** `blocker_for(pr, icons)` has one caller, and that caller gives it `STATE_NAMES`. Return the state name, and delete the parameter and the table. `emoji_for` already maps the name to the glyph.\n- **`apply_marks`:** with a hook configured, it executes twice, in `resolve` and again in `decide`. Keep the one in `resolve`, and let the `decide` wrapper in the tests apply the marks.\n- **Config readers:** `read_config` and `read_signoff` open and parse the same file. One function that returns one tuple removes the second read and gives defect 9 one place for its fix.\n- **Stale text:** the docstring of `parse_required` promises `(failing, running)`, and the function returns four values. The log line at `daemon.py:926` and the docstring of `resolve` omit 🟠 and 💬.\n\n## Tests\n\n- **Coverage:** no test exercises these functions:\n  - `publish`\n  - `workspace_rows`\n  - `panes_of`\n  - `read_pairs`\n  - `print_verdicts`\n  - `take_over_pidfile`\n  - `drop_pidfile`\n  - `redirect_to_log`\n  - `read_reply`\n  - `main`\n- **One cycle, end to end:** one test of a whole cycle covers most of them.\n  - `SortEndToEnd` already has a stub `herdr` that stores its arguments.\n  - Add a stub `gh` that prints `fixtures/lookup.json`, and a temporary git checkout with a GitHub `origin`.\n  - Assert on the stored `report-metadata` arguments: the token, `--ttl-ms`, `--clear-token`, the panes and the skipped rows.\n- **README order:** `test_the_whole_order_is_what_the_readme_says` compares `SORT_ORDER` with itself and never opens the README. Parse the README tables, or rename the test.\n- **Octicons:** the README repeats the Octicon names and codepoints by hand. One test can compare its rules block with `NERD`.\n- **Timeout path:** `test_a_command_that_times_out_answers_nothing` replaces `run` with a mock, so no test exercises the timeout path. A hook that sleeps, with a timeout of 1 s, covers it and guards the fix for defect 7.\n- **Examples:** `examples/` has no test.\n  - Send the output of `signoff_input` through `run_signoff` to `pr-signoff-static`. That pins the contract of six columns.\n  - Load `pr-signoff-jira` with `importlib`, and test `tickets_by_pull`, `without_a_ticket` and `unsatisfied_checks`. All three are pure functions.\n- **Log lines:** a passing suite prints five log lines. Patch `daemon.log` in those tests and assert on the message.\n- **CI:** the repository has none. Add a workflow for `python3 -m unittest` on Python 3.9 and on the newest release. The README promises 3.9, and this review used 3.14 only.\n\n## README and examples\n\n- **Nerd Font:** \"Install\" does not name the Nerd Font, `nerd` is the default, and the first example shows emoji. A user without a Nerd Font sees empty boxes on the first launch. Add the font to the \"Requires\" line.\n- **Shell hooks:** document the trap.\n  - Tab is IFS white space, so `read` merges adjacent tabs, and an empty `reviewDecision` moves `mergeStateStatus` one column left.\n  - `examples/pr-signoff-static:16` has that shape. The script ignores those columns, so it is harmless there.\n  - Rewrite the example with `awk -F'\\t'`, because readers copy it.\n- **Column count:** both example headers and README line 244 (\"five columns\") describe the input before the `unsatisfied` column. The daemon sends six columns.\n- **Placement:** README lines 178 to 194 cover the newest attempt, the rollup and unreported contexts. They sit under \"The 💬 modifier\" and belong to \"State mapping\".\n- **Rule order:** README line 330 says the colour rules follow the order of `blocker_for`.\n  - The block puts merged, closed and no pull request near the end, and `blocker_for` decides them first.\n  - Only the last place of 💬 matters. Say that instead.\n- **New sections:** add three.\n  - \"Troubleshooting\" for blank rows: `gh auth status`, the log path, a token absent from `rows`, and the font.\n  - A limits section: github.com only, `origin` only, forks, 100 contexts, and rulesets.\n  - A section on how a config edit takes effect.\n- **Versions:** the manifest says `0.7.0`, and the repository has no tag and no changelog. Add both, so a user can see what an upgrade brings.\n- **`mergr`:** it appears twice with no link and no description.\n- **Length:** rationale fills most of the 461 lines. Move it to `DESIGN.md`, and keep install, the state table, configuration and \"Troubleshooting\" in the README.\n- **`pr-signoff-jira`:** it allows 15 s for each `curl` and starts `curl` up to four times, against a default `signoffTimeoutSeconds` of 20.\n  - Add `--max-time` to `curl`, and name the timeout in the header.\n  - `fail()` at line 118 formats a list, so the log file shows `['text']`.",
+  "ttft_ms": 2195,
+  "type": "result",
+  "duration_ms": 413009,
+  "uuid": "328f16e7-33c5-49ba-98a8-98a0e5f3a2b9",
+  "ttft_stream_ms": 1610,
+  "time_to_request_ms": 354,
+  "first_content_frame_ms": 1610,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "ste-concise",
+    "prompt": "review",
+    "wall_s": 416,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": true,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "agents-output-styles:STE Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

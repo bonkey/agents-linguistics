@@ -4,6 +4,7 @@ export interface Comparison {
   a: string
   b: string
   outcome: Outcome
+  project: string
   prompt: string
   at: number
 }
@@ -85,20 +86,21 @@ function pairKey(a: string, b: string): string {
 }
 
 /**
- * Next pair to show for a prompt. The arm with the fewest games on this prompt
- * goes first; its opponent is the arm with the closest overall score that it has
- * not met on this prompt yet. Returns null when every pair has been played.
+ * Next pair to show for one prompt of one project. The arm with the fewest games on
+ * this prompt goes first; its opponent is the arm with the closest overall score that
+ * it has not met on this prompt yet. Returns null when every pair has been played.
  */
 export function nextPair(
   arms: string[],
   comps: Comparison[],
+  project: string,
   prompt: string,
   rng: Rng = Math.random,
 ): [string, string] | null {
   const played = new Set<string>()
   const games = new Map<string, number>(arms.map((a) => [a, 0]))
   for (const c of comps) {
-    if (c.prompt !== prompt) continue
+    if (c.project !== project || c.prompt !== prompt) continue
     played.add(pairKey(c.a, c.b))
     games.set(c.a, (games.get(c.a) ?? 0) + 1)
     games.set(c.b, (games.get(c.b) ?? 0) + 1)
@@ -118,8 +120,8 @@ export function nextPair(
   return null
 }
 
-export function gamesFor(comps: Comparison[], prompt: string): number {
-  return comps.filter((c) => c.prompt === prompt).length
+export function gamesFor(comps: Comparison[], project: string, prompt: string): number {
+  return comps.filter((c) => c.project === project && c.prompt === prompt).length
 }
 
 export function totalPairs(armCount: number): number {

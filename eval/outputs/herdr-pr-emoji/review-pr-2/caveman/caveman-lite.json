@@ -1,0 +1,133 @@
+{
+  "duration_api_ms": 314960,
+  "stop_reason": "end_turn",
+  "session_id": "d19c99f8-8530-4e33-9c4f-f4cce93fd5c0",
+  "total_cost_usd": 3.4350099999999992,
+  "usage": {
+    "input_tokens": 50,
+    "cache_creation_input_tokens": 87476,
+    "cache_read_input_tokens": 1567084,
+    "output_tokens": 23114,
+    "output_tokens_details": {
+      "thinking_tokens": 14950
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 87476,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2214,
+        "cache_read_input_tokens": 97335,
+        "cache_creation_input_tokens": 602,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 602
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 50,
+      "outputTokens": 23114,
+      "cacheReadInputTokens": 1567084,
+      "cacheCreationInputTokens": 87476,
+      "webSearchRequests": 0,
+      "costUSD": 3.297491,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 14950,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    },
+    "claude-haiku-4-5-20251001": {
+      "inputTokens": 95719,
+      "outputTokens": 2360,
+      "cacheReadInputTokens": 0,
+      "cacheCreationInputTokens": 0,
+      "webSearchRequests": 3,
+      "costUSD": 0.137519,
+      "contextWindow": 200000,
+      "maxOutputTokens": 32000,
+      "thinkingTokens": 0,
+      "canonicalModel": "claude-haiku-4-5",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 33,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "## Verdict: merge, with follow-ups\n\nPR #2 is already merged (39af215, 2026-09-10), so I reviewed the diff `c0baa8e..d1daf8a` and these are follow-up items.\n\nI found no blocking defect:\n- All 108 tests pass at the PR head.\n- All 15 Octicon codepoints match the Nerd Fonts `i_oct.sh` table.\n- The enum names and `RemovedFromMergeQueueEvent.reason` in the GraphQL query are as I recall the schema; I could not run the query because `gh` is unauthenticated here.\n- The herdr `rules` claims hold: herdr has a 16-rule limit and supports `contains` and `fg`. These shipped in 0.8.2, which equals `min_herdr_version`.\n- The `reason` values `merged` and `failed_checks` match real API output reported by other projects.\n\nI changed no repository files.\n\n## Findings, most severe first\n\nLine numbers refer to the PR head `d1daf8a`.\n\n**1. Medium: the default flip breaks existing installs silently.**\n- Location: `daemon.py:110` (`DEFAULT_ICON_SET = \"nerd\"`), `README.md:14`, `herdr-plugin.toml:5`.\n- Cause:\n  - Upgrading from 0.4.1 to 0.5.0 replaces every emoji with private-use codepoints. A user without a Nerd Font sees empty boxes.\n  - Existing herdr `rules` keyed on emoji stop matching.\n  - `--query` and `--resolve` output changes for scripts that consume it.\n  - Install \"Requires\" does not list a Nerd Font, the README intro sample still shows emoji, and the manifest still says \"One emoji per sidebar row\".\n- Fix:\n  - Either keep `emoji` as the default, or add the Nerd Font to \"Requires\", add an upgrade note, and update the manifest description.\n  - Log the active icon set at start.\n\n**2. Low to medium: the `manual` literal is unverified, and it is the only spelling that changes behaviour.**\n- Location: `daemon.py:338`, `test_daemon.py:494`, `fixtures/lookup_queue.json`.\n- Cause:\n  - The fixture is hand-built.\n  - `merged` and `failed_checks` match real output, but I found no source confirming `manual`.\n  - If GitHub spells it differently, every manual dequeue reads 🪃 until the next push.\n  - `merged` is covered by `state == MERGED`, apart from a window of about 1 second between the removal event and the merge.\n- Fix: dequeue one PR by hand, record the response, and pin the literal. Until then, mark it unverified in the docstring.\n\n**3. Low, plausible: 🪃 can stick after a plain push.**\n- Location: `daemon.py:386-388`, `daemon.py:333-335`.\n- Cause:\n  - I believe GitHub orders timeline commits by commit date, not push time; I did not confirm this.\n  - If so, a commit authored before the ejection and pushed after it, or a cherry-pick with an old date, sorts before the removal event. `last: 1` then still returns the removal.\n  - A force-push is safe because it emits its own event.\n- Fix: document the limit, since re-queueing clears it. A head-oid comparison needs a recorded response first, because `beforeCommit` may not be the PR head.\n\n**4. Low: 🪃 hides a block that re-queueing cannot fix.**\n- Location: `daemon.py:283-286`.\n- Cause:\n  - An ejected PR that later gets `CHANGES_REQUESTED` has status `BLOCKED` but reads 🪃, which suggests queueing it again.\n  - The docstring claim that every rung above 🪃 names the fix does not cover this case.\n- Fix: test `reviewDecision == \"CHANGES_REQUESTED\"` above the ejected rung, or exclude it from 🪃.\n\n**5. Low: the startup log lost the setting names.**\n- Location: `daemon.py:879-882`.\n- Cause: `unstable=%s` now prints `icons[\"unstable\"]`, a private-use glyph in `daemon.log` by default. The `ok`/`pass`/`warn` name is gone and the icon set is never logged.\n- Fix: return the names from `read_config` and log `icons=<name>, unstable=<name>`.\n\n**6. Low: an invalid `icons` value falls back silently.**\n- Location: `daemon.py:180-182`.\n- Cause: `icons = 'emoji'` (single quotes), `\"Emoji\"` or a typo keeps `nerd` with no log line. With the new default, a failed opt-out means empty boxes and no hint why.\n- Fix: log when the key is present but its value is rejected, as the interval floor already does.\n\n**7. Nit: the README description of rule order is wrong.**\n- Location: `README.md:211`, `README.md:242`.\n- Cause: the README says the rules are \"in the order of the table above\" and \"ordered the way `blocker_for` decides\", but the block starts at draft and puts merged, closed and no-PR last. This is harmless, because a verdict holds one blocker glyph and only the conversation rule must be last.\n- Fix: state that actual invariant instead.\n\n**8. Nit: the README claim about recorded fixtures is stale.**\n- Location: `README.md:310`.\n- Cause: it says fixtures are \"recorded from real pull requests\", but `lookup_queue.json` is hand-built. `test_daemon.py:21` admits this; the README does not.\n- Fix: name the exception in the README.\n\nSources:\n- [Nerd Fonts i_oct.sh](https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/bin/scripts/lib/i_oct.sh)\n- [Jamie Tanna: PRs taken out of the merge queue](https://www.jvt.me/posts/2026/08/11/github-merge-queue-prs/)\n- [5dive-ai/5dive PR #902](https://github.com/5dive-ai/5dive/pull/902)\n- [PostOakLabs/ainumbers PR #1857](https://github.com/PostOakLabs/ainumbers/pull/1857)\n- [autumngarage/touchstone PR #1158](https://github.com/autumngarage/touchstone/pull/1158)\n- [digitaldrywood/detent issue #2474](https://github.com/digitaldrywood/detent/issues/2474)\n- [herdr CHANGELOG](https://github.com/herdrdev/herdr/blob/master/CHANGELOG.md)",
+  "ttft_ms": 2232,
+  "type": "result",
+  "duration_ms": 313247,
+  "uuid": "92fd2fb9-823c-4486-9a49-cd8492ce144d",
+  "ttft_stream_ms": 1360,
+  "time_to_request_ms": 298,
+  "first_content_frame_ms": 1361,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "caveman-lite",
+    "prompt": "review-pr-2",
+    "wall_s": 316,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "lite",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

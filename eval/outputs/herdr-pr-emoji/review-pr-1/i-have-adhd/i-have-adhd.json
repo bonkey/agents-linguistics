@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 212167,
+  "stop_reason": "end_turn",
+  "session_id": "f7e8f350-0db1-4fad-9949-92589aa10b56",
+  "total_cost_usd": 1.6883650000000001,
+  "usage": {
+    "input_tokens": 30,
+    "cache_creation_input_tokens": 36603,
+    "cache_read_input_tokens": 435220,
+    "output_tokens": 16944,
+    "output_tokens_details": {
+      "thinking_tokens": 10952
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 36603,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 4661,
+        "cache_read_input_tokens": 45968,
+        "cache_creation_input_tokens": 1096,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1096
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 30,
+      "outputTokens": 16944,
+      "cacheReadInputTokens": 435220,
+      "cacheCreationInputTokens": 36603,
+      "webSearchRequests": 0,
+      "costUSD": 1.6883650000000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 10952,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 21,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: request changes.** Two things need fixing first: a failed `ssh` lookup is cached for the daemon's whole lifetime, and the host from the origin URL goes to `ssh` unvalidated. The feature itself is sound, and fixes 1 and 2 are about 30 minutes of work for the author.\n\nThe PR merges cleanly into `main` even though it is 15 commits behind. All 173 tests pass on the merged tree, which I ran in a temp dir. `gh` is not authenticated here, so I could not read PR comments or CI status. Line numbers below are from the PR head `e9359c1`.\n\n## Must fix\n\n1. **`daemon.py:520-542`, `ssh_host_is_github`: a failed lookup is cached until the daemon restarts (medium).**\n   - **Cause:** `SSH_HOST_CACHE` is module-level and never cleared. It stores `False` when `ssh -G` times out (rc 124), exits non-zero, or `ssh` is missing, and the daemon runs a `while True` loop. One slow `ssh -G`, or an alias added to `~/.ssh/config` after start, leaves the repo with an empty slug and no emoji until restart. That is the same silent failure this PR sets out to fix.\n   - **Reproduced:** the first call returned rc 124. On the second call `ssh` was healthy, but the slug was still `''` and `ssh` had been spawned only once. The docstring says \"once per repository per cycle\", which does not match the code.\n   - **Fix:** cache only when `rc == 0`, clear the cache at the top of `cycle()`, and log when `ssh -G` fails.\n\n2. **`daemon.py:545-557`, `alias_path` into `run([\"ssh\", \"-G\", host])`: the host is not validated (low to medium, hardening).**\n   - **Cause:** the host is whatever precedes the first `:` in the origin URL. `-oProxyCommand=x:o/n` reaches `ssh` as an option, and `../odd:dir/app` reaches it as a host. On OpenSSH 10.3 this is harmless: it exits 255 and creates no file. However, `Match exec` does run under `ssh -G`, and OpenSSH before 9.6 expands `%h` unchecked (the CVE-2023-51385 class). Git passes the host to `ssh` only on fetch or push. The daemon does it automatically for every workspace directory.\n   - **Fix:** return `\"\"` unless `re.fullmatch(r\"[A-Za-z0-9][A-Za-z0-9._-]*\", host)`, and call `[\"ssh\", \"-G\", \"--\", host]`.\n\n## Should fix (low)\n\n3. **`daemon.py:539`, `== \"github.com\"`: aliases to `ssh.github.com` are rejected.**\n   - **Cause:** GitHub's SSH-over-443 setup uses `Hostname ssh.github.com`. `ssh -G` prints exactly that, so the check returns `False` and the repo gets no emoji.\n   - **Fix:** accept both `github.com` and `ssh.github.com`.\n\n4. **`daemon.py:547-549`, the `ssh://` branch: the port is not stripped.**\n   - **Cause:** `ssh://git@github.com-work:22/o/n` asks `ssh` about `github.com-work:22`. `ssh` echoes that back as the hostname, so the check returns `False`.\n   - **Fix:** apply `host.partition(\":\")[0]` in that branch.\n\n5. **`test_daemon.py:742-763`: `ssh_host_is_github` is untested, and an existing test now spawns the real `ssh`.**\n   - **Cause:** the new tests inject a lambda, so the `ssh -G` output parsing, the cache and the no-`ssh` path have no coverage. The unchanged `test_other_remotes` now runs the real `['ssh','-G','gitlab.com']` against the developer's `~/.ssh/config`, and leaves an entry in the module cache.\n   - **Fix:** patch `daemon.run` with canned `ssh -G` output for four cases: match, non-match, rc≠0, and rc 124 followed by success. Pass `lambda h: False` in `test_other_remotes`, and clear the cache in `setUp`.\n\n6. **`README.md:14` and `README.md:377`: the docs are not updated.**\n   - **Cause:** the requirements and the \"how it works\" step 2 do not mention `ssh` or `ssh -G`. The multi-account limit is also undocumented: `gh api graphql` always uses `gh`'s active account, so a repo visible only to the other account gets NOT_FOUND, no emoji, and a log line every cycle. Other repos are unaffected, because `parse_lookup` contains partial errors.\n   - **Fix:** document `ssh` as an optional dependency, and state that the active `gh` account must see every aliased repo.\n\n7. **Nits.**\n   - **Cause:** `GIT_TIMEOUT` is reused for `ssh`. `host_is_github=None` is a test-only parameter in a production signature. The commit message says \"without touching the network\", which is not strictly true because `Match exec` runs under `-G`.\n   - **Fix:** add an `SSH_TIMEOUT`, mock `daemon.run` in the tests instead, and reword the commit message.\n\nNo file in the working tree was modified. I fetched the PR ref into `refs/remotes/origin/pr-1` and used temp dirs under `$TMPDIR`.\n\nNext: run `gh auth login`, then tell me to post findings 1 and 2 as a review on PR #1.",
+  "ttft_ms": 2360,
+  "type": "result",
+  "duration_ms": 216001,
+  "uuid": "b31cccdc-fe62-4990-af0f-8256cc252aa2",
+  "ttft_stream_ms": 1553,
+  "time_to_request_ms": 202,
+  "first_content_frame_ms": 1554,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "i-have-adhd",
+    "prompt": "review-pr-1",
+    "wall_s": 218,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": true
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

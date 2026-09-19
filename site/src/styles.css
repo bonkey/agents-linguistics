@@ -13,11 +13,10 @@
   --ink: #23324f;
   --code: #f1ebe0;
   --danger: #b4342c;
-  --builtin: #2f5fd6; --builtin-bg: #e6edfd;
-  --custom: #17704a;  --custom-bg: #e2f3ea;
-  --plugin: #9c4414;  --plugin-bg: #fbe9dc;
+  --glow: #2f5fd6;
   --radius: 14px;
-  --column: 1200px;
+  --column: 1440px;
+  --nav-height: 65px;
   --shadow: 0 1px 2px rgba(30, 20, 5, 0.06), 0 12px 32px -16px rgba(30, 20, 5, 0.25);
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --display: "Fraunces", "Iowan Old Style", Georgia, serif;
@@ -40,9 +39,7 @@
     --ink: #c9d5f2;
     --code: #27231c;
     --danger: #ff7b72;
-    --builtin: #8fb0ff; --builtin-bg: #1c2740;
-    --custom: #6fd3a2;  --custom-bg: #163126;
-    --plugin: #ffa068;  --plugin-bg: #3a2416;
+    --glow: #8fb0ff;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -16px rgba(0, 0, 0, 0.7);
   }
 }
@@ -53,7 +50,7 @@ html, body {
   margin: 0; color: var(--fg); font: 16px/1.6 var(--font);
   background:
     radial-gradient(1200px 600px at 10% -10%, color-mix(in srgb, var(--accent-2) 22%, transparent), transparent 60%),
-    radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--builtin) 14%, transparent), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, color-mix(in srgb, var(--glow) 14%, transparent), transparent 55%),
     var(--bg);
   background-attachment: fixed;
 }
@@ -124,10 +121,7 @@ button.link:hover { text-decoration: underline; }
 button.danger { color: var(--danger); }
 
 /* chips and lists */
-.chip { display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
-.chip.k-builtin { color: var(--builtin); background: var(--builtin-bg); }
-.chip.k-custom { color: var(--custom); background: var(--custom-bg); }
-.chip.k-plugin { color: var(--plugin); background: var(--plugin-bg); }
+.chip { display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; color: var(--muted); border: 1px solid var(--line); }
 .style-group { margin-top: 48px; }
 .style-entry { margin-top: 24px; }
 .style-entry p { margin: 0; }
@@ -136,8 +130,19 @@ button.danger { color: var(--danger); }
 .style-variant { margin-top: 12px; padding-left: 16px; border-left: 2px solid var(--line); }
 .style-variant h4 { font: 600 0.95rem/1.3 var(--font); margin: 0 0 2px; }
 
+/* The question the answers respond to: the anchor of the browse header and of the test bar. */
+.prompt { margin: 16px 0 20px; max-width: 85ch; font: 400 1.25rem/1.4 var(--display); }
+.prompt-label { display: block; margin-bottom: 4px; font: 600 0.75rem/1.3 var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
 /* compare */
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 8px 0 16px; }
+.bar .prompt { margin: 0; flex: 1 1 40ch; }
+/* The ranking steps: one quiet item at the end of the bar, on a row of its own when open. */
+.how { max-width: 62ch; margin-left: auto; }
+.how[open] { flex-basis: 100%; margin-left: 0; }
+.how summary { cursor: pointer; width: fit-content; }
+.how ol { margin: 8px 0 0; padding-left: 1.4em; }
+.how li { margin: 4px 0; }
 .bar.sticky {
   position: fixed; left: 0; right: 0; bottom: 0; justify-content: center; padding: 14px 16px;
   background: color-mix(in srgb, var(--bg) 85%, transparent); backdrop-filter: blur(12px);
@@ -189,34 +194,36 @@ button.danger { color: var(--danger); }
 select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--pane); color: var(--fg); max-width: 100%; }
 
 /* browse */
-.how { margin-bottom: 12px; max-width: 62ch; }
-.how summary { cursor: pointer; width: fit-content; }
-.how ol { margin: 8px 0 0; padding-left: 1.4em; }
-.how li { margin: 4px 0; }
-.tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 12px; }
+.project-line { margin: 0 0 12px; }
+.pick-another { margin: 32px 0 8px; }
+.tabs select { margin-right: 6px; }
+.tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; }
 .tab { border: 1px solid var(--line); background: var(--pane); color: var(--muted); border-radius: 999px; padding: 8px 16px; }
 .tab.active { color: var(--fg); border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
-.tabs-note { margin-left: 8px; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
 .column { display: flex; flex-direction: column; min-width: 0; }
-.chip-tab { border: 1px solid transparent; background: none; color: var(--fg); border-radius: 999px; padding: 4px 10px; font-size: 0.9rem; }
-.chip-tab.k-builtin.active { background: var(--builtin-bg); border-color: var(--builtin); color: var(--builtin); font-weight: 600; }
-.chip-tab.k-custom.active { background: var(--custom-bg); border-color: var(--custom); color: var(--custom); font-weight: 600; }
-.chip-tab.k-plugin.active { background: var(--plugin-bg); border-color: var(--plugin); color: var(--plugin); font-weight: 600; }
+.chip-tab { border: 1px solid var(--line); background: var(--pane); color: var(--fg); border-radius: 999px; padding: 6px 12px; font-size: 0.9rem; }
+.chip-tab.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); font-weight: 600; }
 .browse { padding-bottom: 24px; }
 .browse-pair { align-items: stretch; }
 .scroll-pane { display: flex; flex-direction: column; margin-bottom: 0; }
-.scroll-pane .pane-head { border-bottom: 0; }
+.scroll-pane .pane-head { border-bottom: 0; padding-bottom: 4px; margin-bottom: 2px; }
 @media (min-width: 901px) {
-  .scroll-pane { max-height: calc(100vh - 295px); overflow-y: auto; }
+  /* Side by side, the page fills the window under the nav: the header takes what it needs and the panes scroll in the rest. */
+  .browse { display: flex; flex-direction: column; height: calc(100vh - var(--nav-height)); }
+  .browse-pair { flex: 1; min-height: 320px; grid-template-rows: minmax(0, 1fr); }
+  .scroll-pane { flex: 1; min-height: 0; overflow-y: auto; }
   .scroll-pane .pane-head { position: sticky; top: -24px; background: var(--pane); z-index: 1; padding-top: 4px; }
+  /* Side by side, the header block keeps room for a two-line summary, a gap and the meta line, so both answers start at the same height.
+     The meta line sits at the bottom of the block, so a shorter summary leaves the spare room between the two. */
+  .pane-info { display: flex; flex-direction: column; min-height: calc(3 * 1.5em + 27px); }
+  .pane-info > div { margin-top: auto; }
 }
-/* Header block of a browse pane: summary, then the first answer's meta line, then the rule that starts the answer. */
+/* Header block of a browse pane: the style's summary under its name, then the first answer's meta line above the rule that starts the answer. */
 .pane-info, .sample-meta { line-height: 1.5; padding-bottom: 14px; margin-bottom: 16px; border-bottom: 1px solid var(--line); }
-.pane-info { margin-top: -6px; }
 .sample-meta { margin-top: 24px; }
 .pane-summary {
-  margin: 0 0 4px;
+  margin: 0 0 12px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .how-list { padding-left: 1.2em; }

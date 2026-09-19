@@ -5,20 +5,23 @@ import { Landing } from './components/Landing'
 import { Nav, type Phase } from './components/Nav'
 import { Results } from './components/Results'
 import { Styles } from './components/Styles'
-import { PROMPT_ORDER } from './data/samples'
+import { defaultQuestion, type Question } from './data/samples'
 import { gamesFor, type Comparison } from './lib/ranking'
 import { clear, load, save } from './lib/storage'
 
 const HASH: Record<Phase, string> = { landing: '', compare: '#compare', results: '#results', browse: '#browse', styles: '#styles' }
 
+/** The view part of a hash such as #browse/<project>/<prompt>. */
+const view = (hash: string) => hash.split('/')[0]
+
 function phaseFromHash(hash: string): Phase {
-  const found = (Object.keys(HASH) as Phase[]).find((p) => HASH[p] === hash && hash !== '')
+  const found = (Object.keys(HASH) as Phase[]).find((p) => HASH[p] === view(hash) && hash !== '')
   return found ?? 'landing'
 }
 
 export default function App() {
   const [comps, setComps] = useState<Comparison[]>(() => load().comps)
-  const [prompt, setPrompt] = useState(PROMPT_ORDER[0])
+  const [question, setQuestion] = useState<Question>(() => defaultQuestion())
   const [phase, setPhase] = useState<Phase>(() => phaseFromHash(window.location.hash))
 
   useEffect(() => save({ comps }), [comps])
@@ -29,7 +32,7 @@ export default function App() {
   // The phase lives in the URL hash, so the browser's back button and a shared link both work.
   useEffect(() => {
     const want = HASH[phase]
-    if (window.location.hash !== want) window.history.pushState(null, '', want || window.location.pathname)
+    if (view(window.location.hash) !== want) window.history.pushState(null, '', want || window.location.pathname)
   }, [phase])
   useEffect(() => {
     const onHash = () => setPhase(phaseFromHash(window.location.hash))
@@ -40,11 +43,11 @@ export default function App() {
   const onPick = (c: Comparison) => {
     const next = [...comps, c]
     setComps(next)
-    if (gamesFor(next, c.prompt) % ROUND === 0) setPhase('results')
+    if (gamesFor(next, c.project, c.prompt) % ROUND === 0) setPhase('results')
   }
 
-  const start = (p: string) => {
-    setPrompt(p)
+  const start = (q: Question) => {
+    setQuestion(q)
     setPhase('compare')
   }
 
@@ -63,10 +66,10 @@ export default function App() {
   let body
   switch (phase) {
     case 'compare':
-      body = <Compare prompt={prompt} comps={comps} onPick={onPick} onResults={() => setPhase('results')} />
+      body = <Compare question={question} comps={comps} onPick={onPick} onResults={() => setPhase('results')} />
       break
     case 'results':
-      body = <Results comps={comps} prompt={prompt} onContinue={start} onReset={reset} onBrowse={() => setPhase('browse')} />
+      body = <Results comps={comps} question={question} onContinue={start} onReset={reset} onBrowse={() => setPhase('browse')} />
       break
     case 'browse':
       body = <Browse />
@@ -75,7 +78,7 @@ export default function App() {
       body = <Styles />
       break
     default:
-      body = <Landing onStart={() => start(prompt)} onBrowse={() => setPhase('browse')} resumable={comps.length > 0} />
+      body = <Landing onStart={() => start(question)} onBrowse={() => setPhase('browse')} resumable={comps.length > 0} />
   }
 
   return (

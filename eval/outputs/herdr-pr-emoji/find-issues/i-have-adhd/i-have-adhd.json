@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 352650,
+  "stop_reason": "end_turn",
+  "session_id": "7d4b0007-6dfd-41dc-b846-18f280189fe2",
+  "total_cost_usd": 2.8276380000000003,
+  "usage": {
+    "input_tokens": 24,
+    "cache_creation_input_tokens": 64291,
+    "cache_read_input_tokens": 601312,
+    "output_tokens": 27825,
+    "output_tokens_details": {
+      "thinking_tokens": 20756
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 64291,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2814,
+        "cache_read_input_tokens": 70890,
+        "cache_creation_input_tokens": 3862,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3862
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 24,
+      "outputTokens": 27825,
+      "cacheReadInputTokens": 601312,
+      "cacheCreationInputTokens": 64291,
+      "webSearchRequests": 0,
+      "costUSD": 2.8276380000000003,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 20756,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 14,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Start with `take_over_pidfile()` at `daemon.py:1294`. Holding an `fcntl.flock` on the pid file for the daemon's lifetime fixes findings 1, 2 and 8 together, in about 30 minutes. I changed no files. Each \"confirmed\" finding below was reproduced in a temp dir outside the repo.\n\n## High\n\n1. **Takeover kills whatever process owns the recorded pid** (confirmed)\n   - Location: `daemon.py:1297-1311`\n   - Cause:\n     - The only check before SIGTERM and SIGKILL is `alive(old)`; nothing checks that the pid is a daemon.\n     - SIGKILL, SIGHUP, a crash or power loss leave the pid file stale, because `finally` never runs.\n     - After a reboot pids restart low and the state dir persists, so the pid can belong to your shell or to herdr itself.\n     - In my test an unrelated `sleep` was killed in 0.5 s.\n     - `int()` also accepts a negative pid (the parse was tested, the kill was not run). A file holding `-1` would send TERM, then KILL, to every process you own.\n   - Fix:\n     - Open the pid file and take `fcntl.flock(fd, LOCK_EX | LOCK_NB)`, keeping the fd open for the daemon's lifetime.\n     - Signal the recorded pid only when the lock is held, which proves a live daemon.\n     - Reject `old <= 1`.\n\n2. **Two starters both survive** (confirmed)\n   - Location: `daemon.py:1297-1314`\n   - Cause:\n     - Reading the pid and writing the new one is not atomic, and the 0.5 s poll loop widens the window.\n     - Two starters launched 0.1 s apart both killed the old process and both kept running.\n     - The pid file named only one of them, so the other polls GitHub forever and no later takeover can find it.\n   - Fix: the same flock. Write the pid only while holding the lock, and have the loser retry until it gets it.\n\n3. **Timeout kills only the direct child** (confirmed)\n   - Location: `run()`, `daemon.py:207-215`\n   - Cause:\n     - Python's `subprocess.run` SIGKILLs only the direct child on timeout, and the same happens when the SIGTERM handler raises `SystemExit`.\n     - Grandchildren survive. The shipped hook spawns `curl` at `examples/pr-signoff-jira:106`.\n     - A hung hook therefore leaks one orphan per cycle, about 720 a day at the 120 s default.\n     - A hook that answers, exits 0 and leaves a background process holding stdout got return code 124, and its valid answer was discarded.\n   - Fix:\n     - Start the child with `Popen(..., start_new_session=True)`.\n     - On timeout, and in a `finally`, call `os.killpg(proc.pid, SIGKILL)`.\n     - Keep the stdout gathered so far when the child had already exited 0.\n\n## Medium\n\n4. **`gh_graphql` drops the reason for HTTP failures** (confirmed)\n   - Location: `daemon.py:859-867`\n   - Cause:\n     - On a 401, `gh` prints `{\"message\":\"Bad credentials\"}` on stdout and exits 1.\n     - That body parses as a dict with no `data` and no `errors`, so the function returns `(None, [])` and the stderr text is discarded.\n     - A 403 rate limit and a SAML refusal should lose their cause the same way; I only tested the 401.\n     - The log shows only \"no answer for N branch(es)\", and every emoji expires with no cause recorded.\n   - Fix: when `rc != 0` and `errors` is empty, return `[{\"message\": err.strip() or body.get(\"message\")}]`.\n   - Related, at `daemon.py:1372`: \"gh is required\" is logged before `redirect_to_log()` and the daemon exits 0, so `daemon.log` stays empty. Move the redirect above the check.\n\n5. **Cycle period can outrun the token TTL**\n   - Location: `daemon.py:1029`, `daemon.py:1412`\n   - Cause:\n     - The TTL is `3 × interval`, but the real period is `interval` plus the cycle duration.\n     - The cycle is serial: two git calls at 5 s per workspace, 10 s per publish, 30 s per `gh` call and 20 s for the hook.\n     - About 24 workspaces on a hung mount, or a stalled herdr, pushes a cycle past 240 s. Every emoji then blinks out while the daemon still looks healthy.\n   - Fix:\n     - Sleep `max(0, interval - elapsed)`.\n     - Cache the slug per path.\n     - Stop publishing after the first herdr timeout in a cycle.\n\n## Low\n\n6. **Socket read has no total deadline and ignores the reply `id`** (confirmed)\n   - Location: `daemon.py:1229-1267`\n   - Cause:\n     - `settimeout` applies to each `recv`, not to the whole request. A trickling peer held a 2 s timeout open for 9 s, with an unbounded buffer.\n     - A reply carrying someone else's `id` was accepted as `ok=True`.\n   - Fix:\n     - Use a `time.monotonic()` deadline and a size cap.\n     - Read lines until `answer.get(\"id\") == request_id`.\n\n7. **Sort is unlocked and not re-planned**\n   - Location: `daemon.py:1273-1289`\n   - Cause:\n     - The moves are planned from one snapshot.\n     - Pressing the key twice, or closing a workspace mid-sort, interleaves the moves or stops after N of M, leaving a half-sorted sidebar.\n   - Fix:\n     - `flock` a `sort.lock` file for the duration of the sort.\n     - On a failed move, list again and re-plan once.\n\n8. **Signal setup leaves gaps**\n   - Location: `daemon.py:1393-1402`\n   - Cause:\n     - The pid file is written before the handlers are installed and before the `try`.\n     - SIGHUP is never handled.\n     - Both paths leave a stale pid file, which feeds finding 1.\n   - Fix:\n     - Install handlers for TERM, INT and HUP first.\n     - Do the takeover inside the `try`.\n\n9. **Takeover mistakes an unreaped child for a live process** (confirmed)\n   - Location: `alive()`, `daemon.py:1317-1322`\n   - Cause:\n     - `kill(pid, 0)` succeeds for an exited child its parent has not yet reaped (a zombie).\n     - The takeover waited the full 5.5 s and logged a false \"ignored TERM, killing it\".\n   - Fix: the flock tells you when the old daemon has died, so drop the poll loop.\n\n10. **`--once` bypasses the single-instance guard**\n    - Location: `daemon.py:1108`, `daemon.py:1387`\n    - Cause:\n      - `--once` and the daemon both write the same `states.json.tmp`. A collision can publish a half-written file or raise `ENOENT` on the rename.\n      - The sign-off hook can also run twice at the same time.\n    - Fix: write through `tempfile.mkstemp(dir=STATE)`, and take the cycle lock for `--once` as well.\n\nNext: open `daemon.py:1294` and sketch the flock version of `take_over_pidfile()`, or tell me to apply it.",
+  "ttft_ms": 1775,
+  "type": "result",
+  "duration_ms": 377101,
+  "uuid": "361e9e53-f3c3-4a2e-b601-62f5acbdcb30",
+  "ttft_stream_ms": 1099,
+  "time_to_request_ms": 111,
+  "first_content_frame_ms": 1099,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "i-have-adhd",
+    "prompt": "find-issues",
+    "wall_s": 379,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": true
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

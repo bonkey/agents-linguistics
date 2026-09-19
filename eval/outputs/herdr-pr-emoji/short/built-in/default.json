@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 22494,
+  "stop_reason": "end_turn",
+  "session_id": "3202f446-74c9-46d5-bc6b-d7d578150dcf",
+  "total_cost_usd": 0.5147029999999999,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 19914,
+    "cache_read_input_tokens": 103892,
+    "output_tokens": 1807,
+    "output_tokens_details": {
+      "thinking_tokens": 110
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 19914,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 737,
+        "cache_read_input_tokens": 29850,
+        "cache_creation_input_tokens": 525,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 525
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 1807,
+      "cacheReadInputTokens": 103892,
+      "cacheCreationInputTokens": 19914,
+      "webSearchRequests": 0,
+      "costUSD": 0.5147029999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 110,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 8,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "It reads as mergeable on purpose. `README.md:5` says the plugin was built so a PR whose only failing checks are non-required reads the way GitHub treats it, which is as mergeable. Two parts of the code do this.\n\n**1. Only required checks can produce a failing mark.**\n- `required_state` (`daemon.py:282`) skips any check context where `isRequired` is not `True` (`daemon.py:311`). A failing optional check therefore never sets `failing`.\n- The ❌ and 🟠 marks in `blocker_for` depend only on `pr[\"required_failing\"]` (`daemon.py:385`). They never look at the overall rollup state.\n- The rollup cannot be used for this. GitHub reports `FAILURE` for the whole `statusCheckRollup` as soon as one check fails, optional or not (`daemon.py:667-669`).\n- A `FAILURE` or `ERROR` rollup triggers a second GraphQL request (`required_targets`, `daemon.py:686`). That request asks for `isRequired(pullRequestNumber:)` on each check to find out which ones count.\n\n**2. The row then falls through to GitHub's own merge state.**\n- `blocker_for` checks, in order, for a required failure, running checks, a missing review, a merge-queue ejection and `BLOCKED`. If none apply, it reads `mergeStateStatus`.\n- When only optional checks fail, GitHub reports `UNSTABLE`, meaning the PR can be merged although some checks are red.\n- `daemon.py:397` maps `UNSTABLE` to `icons[\"unstable\"]`.\n\n**What that mark looks like is configurable.**\n- The `unstable` setting controls it (`config.example.toml:8`, resolved in `icon_set` at `daemon.py:170`).\n- `\"ok\"` is the default and shows 🆗. It means mergeable, with optional failures present.\n- `\"pass\"` shows ✅, the same as a fully green PR.\n- `\"warn\"` shows ⚠️, the same glyph as a merge conflict.\n\nIf you want these PRs to stand out, set `unstable = \"warn\"`. The default 🆗 already differs from ✅, and only `\"pass\"` makes the two look the same.",
+  "ttft_ms": 1553,
+  "type": "result",
+  "duration_ms": 23479,
+  "uuid": "26c763e9-16fa-4fc5-a7ae-52612cec49f0",
+  "ttft_stream_ms": 1291,
+  "time_to_request_ms": 229,
+  "first_content_frame_ms": 1291,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "default",
+    "prompt": "short",
+    "wall_s": 26,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

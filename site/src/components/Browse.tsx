@@ -1,14 +1,25 @@
 import { useEffect, useState } from 'react'
 import { ARMS, ARM_BY_ID } from '../data/arms'
-import { PROMPTS, PROMPT_ORDER, harnessLabel, samplesFor, type Sample } from '../data/samples'
-import { KIND_CLASS } from './Landing'
+import { defaultQuestion, harnessLabel, resolve, samplesFor, type Question, type Sample } from '../data/samples'
 import { Markdown } from './Markdown'
+import { Prompt } from './Prompt'
+import { QuestionPicker } from './QuestionPicker'
 
-const PROMPT_LABEL: Record<string, string> = { short: 'Short question', review: 'Long review' }
+/** The question named by #browse/<project>/<prompt>, or the default one. */
+function questionFromHash(): Question {
+  const [, project, prompt] = window.location.hash.split('/')
+  return { ...defaultQuestion(undefined, project), ...(prompt ? { prompt } : {}) }
+}
 
 /** Two independent panes. Each has its own style tabs and arrows. */
 export function Browse() {
-  const [prompt, setPrompt] = useState(PROMPT_ORDER[0])
+  const [question, setQuestionState] = useState<Question>(questionFromHash)
+  const { project, prompt } = resolve(question)
+  // The selection lives in the hash, so a link can point at one project and prompt.
+  const setQuestion = (q: Question) => {
+    setQuestionState(q)
+    window.history.replaceState(null, '', `#browse/${q.project}/${q.prompt}`)
+  }
   const [left, setLeft] = useState(0)
   const [right, setRight] = useState(1)
   const n = ARMS.length
@@ -30,27 +41,16 @@ export function Browse() {
 
   return (
     <main className="page browse">
-      <details className="how muted small">
-        <summary>How the ranking works</summary>
-        <ol>
-          <li>You see two answers to the same question, labelled A and B. Names stay hidden.</li>
-          <li>You pick the one you would rather read, or say you have no preference.</li>
-          <li>The next pair is chosen so that every pick carries information: the style with the fewest picks meets the one closest to it in score.</li>
-          <li>After ten picks the names come out, with a Bradley-Terry score from your picks. Keep going on the short answers, or switch to the long review answers to test structure.</li>
-        </ol>
-      </details>
-      <div className="tabs" role="tablist" aria-label="Prompt">
-        {PROMPT_ORDER.map((p) => (
-          <button key={p} role="tab" aria-selected={prompt === p} className={`tab${prompt === p ? ' active' : ''}`} onClick={() => setPrompt(p)}>
-            {PROMPT_LABEL[p] ?? p}
-          </button>
-        ))}
-        <span className="muted small tabs-note">{PROMPTS[prompt]}</span>
-      </div>
+      <p className="muted small project-line">
+        <strong>{project.name}</strong> · {project.description} · {[project.category, ...project.tech].join(', ')} ·{' '}
+        <a href={project.repo} target="_blank" rel="noreferrer">{project.ref}</a>
+      </p>
+      <QuestionPicker value={question} onChange={setQuestion} />
+      <Prompt prompt={prompt} />
 
       <div className="pair browse-pair">
-        <Column side="Left" index={left} prompt={prompt} onSelect={setLeft} onStep={stepLeft} keyHint="Shift + arrow keys" />
-        <Column side="Right" index={right} prompt={prompt} onSelect={setRight} onStep={stepRight} keyHint="Arrow keys" />
+        <Column side="Left" index={left} question={{ project: project.id, prompt: prompt.id }} onSelect={setLeft} onStep={stepLeft} keyHint="Shift + arrow keys" />
+        <Column side="Right" index={right} question={{ project: project.id, prompt: prompt.id }} onSelect={setRight} onStep={stepRight} keyHint="Arrow keys" />
       </div>
     </main>
   )
@@ -59,21 +59,21 @@ export function Browse() {
 interface ColumnProps {
   side: string
   index: number
-  prompt: string
+  question: Question
   onSelect: (i: number) => void
   onStep: (d: number) => void
   keyHint: string
 }
 
-function Column({ side, index, prompt, onSelect, onStep, keyHint }: ColumnProps) {
+function Column({ side, index, question, onSelect, onStep, keyHint }: ColumnProps) {
   const info = ARMS[index]
-  const samples = samplesFor(info.id, prompt)
+  const samples = samplesFor(question, info.id)
   const meta = (s: Sample) => `${samples.length > 1 ? `Run ${s.run} · ` : ''}${s.words} words · ${harnessLabel(s.harness)}`
   return (
     <div className="column">
       <div className="chips" role="tablist" aria-label={`${side} style`}>
         {ARMS.map((a, i) => (
-          <button key={a.id} role="tab" aria-selected={i === index} className={`chip-tab ${KIND_CLASS[a.kind]}${i === index ? ' active' : ''}`} onClick={() => onSelect(i)} title={a.summary}>
+          <button key={a.id} role="tab" aria-selected={i === index} className={`chip-tab${i === index ? ' active' : ''}`} onClick={() => onSelect(i)} title={a.summary}>
             {a.name}
           </button>
         ))}
@@ -81,7 +81,7 @@ function Column({ side, index, prompt, onSelect, onStep, keyHint }: ColumnProps)
       <article className="pane scroll-pane">
         <div className="pane-head">
           <span>
-            {info.name} <span className={`chip ${KIND_CLASS[info.kind]}`}>{info.kind}</span>
+            {info.name} <span className="chip">{info.kind}</span>
           </span>
           <span className="pager">
             <button className="arrow" onClick={() => onStep(-1)} aria-label={`${side}: previous style`} title={`${keyHint}: previous`}>←</button>

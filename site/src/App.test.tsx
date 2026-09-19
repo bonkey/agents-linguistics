@@ -3,16 +3,24 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
 import { ARMS } from './data/arms'
-import { SAMPLES } from './data/samples'
+import { PROJECTS, defaultQuestion, samplesFor } from './data/samples'
 
 beforeEach(() => { localStorage.clear(); window.history.replaceState(null, '', '/') })
 afterEach(cleanup)
 
 describe('data', () => {
-  it('has at least one short sample for every arm', () => {
-    for (const a of ARMS) {
-      expect(SAMPLES.some((s) => s.arm === a.id && s.prompt === 'short'), a.id).toBe(true)
+  it('has projects and prompts of the shape the site reads', () => {
+    expect(PROJECTS.length).toBeGreaterThan(0)
+    for (const p of PROJECTS) {
+      for (const k of ['id', 'name', 'description', 'category', 'repo', 'ref'] as const) expect(typeof p[k], `${p.id}.${k}`).toBe('string')
+      expect(Array.isArray(p.tech), `${p.id}.tech`).toBe(true)
+      expect(p.prompts.length, `${p.id}.prompts`).toBeGreaterThan(0)
+      for (const q of p.prompts) for (const k of ['id', 'kind', 'text'] as const) expect(typeof q[k], `${p.id}/${q.id}.${k}`).toBe('string')
     }
+  })
+
+  it('has an answer from every arm for the question the test starts with', () => {
+    for (const a of ARMS) expect(samplesFor(defaultQuestion(), a.id).length, a.id).toBeGreaterThan(0)
   })
 })
 
@@ -49,10 +57,12 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Your results' })).toBeTruthy()
   })
 
-  it('keeps the ranking steps in a closed disclosure at the top of browse', () => {
+  it('keeps the ranking steps in a closed disclosure on the test view only', () => {
     render(<App />)
     expect(screen.queryByText('How the ranking works')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Browse all answers' }))
+    expect(screen.queryByText('How the ranking works')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
     const details = screen.getByText('How the ranking works').closest('details')
     expect(details?.open).toBe(false)
     expect(details?.querySelectorAll('ol li')).toHaveLength(4)
@@ -62,6 +72,32 @@ describe('App', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Browse all answers' }))
     expect(document.querySelector('.pane-head')?.textContent).toContain(ARMS[0].name)
+  })
+
+  it('names the project in browse and keeps the selected prompt in the link', () => {
+    const project = PROJECTS[0]
+    const other = project.prompts.find((p) => p.id !== defaultQuestion().prompt)!
+    window.history.replaceState(null, '', `/#browse/${project.id}/${other.id}`)
+    render(<App />)
+    expect(screen.getByRole('link', { name: project.ref }).getAttribute('href')).toBe(project.repo)
+    expect(screen.getByText(other.text)).toBeTruthy()
+    fireEvent.click(screen.getAllByRole('tab')[0])
+    expect(window.location.hash).toBe(`#browse/${project.id}/${defaultQuestion().prompt}`)
+  })
+
+  it('offers another question on the results page and starts the test on it', () => {
+    const project = PROJECTS[0]
+    const other = project.prompts.find((p) => p.id !== defaultQuestion().prompt)!
+    render(<App />)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Start the test' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'A reads better' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Results so far' }))
+    fireEvent.click(screen.getAllByRole('tab').find((t) => t.getAttribute('aria-selected') === 'false')!)
+    expect(screen.getByText(other.text)).toBeTruthy()
+    expect(screen.getByText('Pick 1 of 10')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'B reads better' }))
+    expect(JSON.parse(localStorage.getItem('bakeoff.v1')!).comps.map((c: { project: string; prompt: string }) => `${c.project}/${c.prompt}`))
+      .toEqual([`${project.id}/${defaultQuestion().prompt}`, `${project.id}/${other.id}`])
   })
 
   it('lists every style in its own section', () => {

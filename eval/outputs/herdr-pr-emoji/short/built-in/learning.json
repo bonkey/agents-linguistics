@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 27873,
+  "stop_reason": "end_turn",
+  "session_id": "d8a4985f-ad32-477c-a344-a21d1108d960",
+  "total_cost_usd": 0.5584804999999999,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 20770,
+    "cache_read_input_tokens": 100522,
+    "output_tokens": 2357,
+    "output_tokens_details": {
+      "thinking_tokens": 99
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 20770,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 970,
+        "cache_read_input_tokens": 26715,
+        "cache_creation_input_tokens": 4529,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 4529
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 2357,
+      "cacheReadInputTokens": 100522,
+      "cacheCreationInputTokens": 20770,
+      "webSearchRequests": 0,
+      "costUSD": 0.5584804999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 99,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 10,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "A pull request whose only failing checks are non-required shows as mergeable because the plugin never treats a failing non-required check as a failure. This is the behaviour the plugin was written for. `README.md:5` says such a pull request \"reads as mergeable, the way GitHub itself treats it\", meaning branch protection only blocks on required checks.\n\nThree places in `daemon.py` produce this:\n\n1. **Failures are counted per check, and only for required checks.** `required_state` (`daemon.py:282`) skips every check where `isRequired` is not true (`daemon.py:311`). A failing non-required check therefore never sets `required_failing`, and the ❌/🟠 branch at `daemon.py:385` is never taken.\n\n2. **The overall rollup state is not used to detect failure.** GitHub sets `statusCheckRollup.state` to `FAILURE` as soon as any one check fails, and one failing non-required check is enough (`README.md:182-185`). `blocker_for` reads the rollup only to detect `PENDING` (`daemon.py:389`).\n\n3. **GitHub's own merge state already says the pull request can merge.** For this case GitHub reports `mergeStateStatus == UNSTABLE`, which means mergeable with non-passing, non-required statuses. `blocker_for` checks `DIRTY`, a required-check failure, running checks, a missing review, a merge-queue ejection and `BLOCKED` first. `UNSTABLE` comes after all of those (`daemon.py:397`), just above `CLEAN`/`BEHIND`/`HAS_HOOKS` → ✅.\n\nBy default it shows 🆗 rather than ✅, so you can tell \"mergeable, but some optional checks are red\" apart from \"everything green\". The `unstable` setting in `config.toml` changes that (`config.example.toml:6-8`, resolved in `icon_set` at `daemon.py:170`):\n\n| `unstable =` | glyph | reads as |\n|---|---|---|\n| `\"ok\"` (default) | 🆗 | mergeable, with optional failures |\n| `\"pass\"` | ✅ | the same as a clean pull request |\n| `\"warn\"` | ⚠️ | shares the merge-conflict glyph, so the row looks like a conflict |\n\nIf the optional failures should stand out on your rows, set `unstable = \"warn\"`. No code change is needed.\n\n`★ Insight ─────────────────────────────────────`\n- `icon_set` resolves the `unstable` setting into the glyph table once, at load time. `blocker_for` just returns `icons[\"unstable\"]` and does not know the state is configurable.\n- Because of that, a glyph on a row cannot be mapped back to a state: under `\"warn\"`, ⚠️ can mean either a conflict or optional failures. The sort actions therefore recompute the state per workspace instead of reading the glyph back (`README.md:364`).\n`─────────────────────────────────────────────────`",
+  "ttft_ms": 1727,
+  "type": "result",
+  "duration_ms": 29294,
+  "uuid": "58532b29-c5ff-4d4a-9139-7eb66328cef8",
+  "ttft_stream_ms": 1469,
+  "time_to_request_ms": 311,
+  "first_content_frame_ms": 1469,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "learning",
+    "prompt": "short",
+    "wall_s": 32,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Learning"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

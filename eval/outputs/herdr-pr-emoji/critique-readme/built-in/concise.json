@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 145924,
+  "stop_reason": "end_turn",
+  "session_id": "e4ad96d2-7ec2-42d6-88d0-aebd59d7df3d",
+  "total_cost_usd": 1.90371725,
+  "usage": {
+    "input_tokens": 20,
+    "cache_creation_input_tokens": 60988,
+    "cache_read_input_tokens": 429229,
+    "output_tokens": 11529,
+    "output_tokens_details": {
+      "thinking_tokens": 6554
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 60988,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 3612,
+        "cache_read_input_tokens": 70361,
+        "cache_creation_input_tokens": 1101,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1101
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 20,
+      "outputTokens": 11529,
+      "cacheReadInputTokens": 429229,
+      "cacheCreationInputTokens": 60988,
+      "webSearchRequests": 0,
+      "costUSD": 1.90371725,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 6554,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 15,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "I found 3 statements in `README.md` that contradict the code, 9 things a first-time contributor needs that are missing, and 5 unclear spots. Nothing was modified. I checked the README against `daemon.py`, `config.example.toml`, `herdr-plugin.toml`, `examples/` and the local `herdr` CLI. `python3 -m unittest` passes (171 tests).\n\n## Wrong\n\n1. **`README.md:31-34`: `refresh` does not start the daemon.** The action runs `daemon.py --once` (`daemon.py:1387`). That is one cycle, published with a TTL of three intervals, so the emoji appear and then vanish after about 6 minutes. Replace with:\n   > The loop starts only with the herdr server (`[[startup]]`), so restart herdr after installing. `herdr plugin action invoke bonkey.pr-emoji.refresh` runs a single cycle. It is useful to confirm the wiring, but its emoji expire after three intervals unless the daemon is running.\n\n2. **`README.md:244`: \"five columns of GitHub's own answer\".** The hook's stdin has six columns (`daemon.py:522`), because `unsatisfied` was added later. Change \"five\" to \"six\". The header comments in both `examples/pr-signoff-*` also list five columns and omit `unsatisfied`.\n\n3. **`README.md:296-297` and `:330-331`: the stated order of the colour rules.** The README says the rules are \"in the order of the table above\" and \"ordered the way `blocker_for` decides\". Neither is true. The TOML block starts at draft and puts merged, closed and no-PR near the end. Both the table and `blocker_for` start with no-PR, merged and closed. Either reorder the block or replace both claims with:\n   > Only one ordering matters: 💬 last, so the blocker beside it colours the cell. Every value carries exactly one blocker glyph, so the other rules can go in any order.\n\n## Missing\n\n4. **Nerd Font requirement (`README.md:14`).** The default is `icons = \"nerd\"`, but the intro shows emoji and the requirements never mention a font. A new user sees empty boxes. Add to the requirements line:\n   > The default icon set needs a Nerd Font as the terminal font. Set `icons = \"emoji\"` otherwise (see [Configuration](#configuration)).\n   \n   Also add \"macOS or Linux\", which `herdr-plugin.toml:6` declares, and \"`gh auth status` must pass for github.com\".\n\n5. **How to create the config file.** The README says only \"See `config.example.toml`\", and an installed user does not know where the plugin tree lives. Add:\n   > `mkdir -p \"$(herdr plugin config-dir bonkey.pr-emoji)\"`, then copy `config.example.toml` from the repository into that directory as `config.toml`.\n\n6. **The config is read once at startup (`daemon.py:1363`).** The README does not say how a change takes effect. It is worse than it looks: `refresh` re-reads the config but the running loop does not, so after switching `icons` the row alternates between the two sets. Add under Configuration:\n   > The daemon reads `config.toml` when it starts. After editing it, restart herdr, or launch `python3 daemon.py` by hand from the plugin directory so that it replaces the running daemon.\n\n7. **`signoffCommand` is a single executable path with no arguments.** It runs as `run([command])` (`daemon.py:880`), so `\"python3 ~/bin/hook.py\"` fails with exit 127. \"One argv with no shell\" at `README.md:211` does not make that clear. Add:\n   > The value is the path of one executable. It takes no arguments and no `$VARS`; only `~` is expanded. Wrap anything else in a script.\n   \n   Add these too:\n   - The answer must be exactly three tab-separated fields, with slug and branch echoed verbatim (`daemon.py:564`).\n   - The hook is not run in a cycle that has no open, undrafted PR.\n   - Settings are matched by regex, not parsed as TOML, so they need double quotes and one setting per line (`daemon.py:233-272`).\n\n8. **Environment variables for the Jira example.** It needs `SIGNOFF_JIRA_*`, and the daemon inherits the herdr server's environment. The README never says how to set them. Add a wrapper snippet:\n   ```sh\n   #!/bin/sh\n   export SIGNOFF_JIRA_URL=… SIGNOFF_JIRA_JQL=… SIGNOFF_JIRA_EMAIL=… SIGNOFF_JIRA_TOKEN_CMD=…\n   exec /path/to/examples/pr-signoff-jira\n   ```\n\n9. **A Limitations section.** These all come from the code and none are stated together:\n   - Only github.com remotes work; there is no GitHub Enterprise Server support (`slug_from_url`, `daemon.py:953`).\n   - Only the `origin` remote is read. In a fork clone, the PR lives in the upstream repository, so the row reads ❔.\n   - The lookup matches on `headRefName` alone, so a PR from someone else's fork with the same branch name can match.\n   - Only the first 100 check contexts are read (`daemon.py:714`). The README mentions the 100-thread limit but not this one.\n\n10. **Troubleshooting.** Add a short checklist for \"nothing shows\":\n    - the token is present in `[ui.sidebar.*]`;\n    - `gh auth status` passes;\n    - a Nerd Font is set, or `icons = \"emoji\"`;\n    - `daemon.log` has no errors (a missing `gh` logs \"gh is required; not starting\" and the daemon exits 0);\n    - `python3 daemon.py --once` runs cleanly.\n\n11. **Contributor basics.** The Development section stops at \"run the tests\". Add:\n    - A checklist for adding a state. The places to touch are:\n      - `EMOJI`, `NERD`, `SORT_ORDER` and `blocker_for` in `daemon.py`;\n      - both README tables, the colour rules and the sort table;\n      - the `description` in `herdr-plugin.toml`;\n      - `config.example.toml`;\n      - the example headers.\n      \n      The fifth column already went stale in this way.\n    - How the fixtures were recorded, which is `gh api graphql -f query=…` with `lookup_query`/`required_query`, and which fields were edited by hand (`test_daemon.py:4-24`).\n    - When to bump `version` in `herdr-plugin.toml`.\n    - The constraint that the code uses only the standard library and must run on Python 3.9.\n    - How to run one test class: `python3 -m unittest test_daemon.EmojiPrecedence`.\n\n12. **Upgrade and uninstall.** `herdr plugin uninstall` exists. Note that the config and state directories survive it, and tell users to restart herdr after an upgrade so the new daemon starts.\n\n## Unclear\n\n13. **`README.md:4`, `:376`: `mergr` is never explained or linked.** Add a link, or \"(another herdr PR-status plugin)\".\n\n14. **`README.md:178-194` is in the wrong section.** The three paragraphs on re-run attempts, `statusCheckRollup.state` and unreported contexts are about ❌ and 🟡, but they sit under \"The 💬 modifier\". Move them into State mapping, after the 🟠 paragraph at `:106`.\n\n15. **`README.md:19-29` and `:302-322` place the token differently.** The Install snippet puts `$pr_emoji` in the second row of `[ui.sidebar.spaces]`. The colour snippet puts it in the first row and drops `[ui.sidebar.agents]`. Make the placement the same, and add: \"repeat the `rules` on the agents row if you render the token there.\"\n\n16. **`README.md:289`: \"The prose below and the table above\"** points the wrong way, because most of the emoji prose comes before it. Change it to \"This README names the emoji throughout…\".\n\n17. **Development commands (`README.md:433-435`).**\n    - `--query` prints the configured icon set, which is private-use glyphs by default. Add \"set `icons = \"emoji\"` to read the output outside a Nerd Font terminal\".\n    - \"Needs `HERDR_SOCKET_PATH`\" does not say where that variable comes from. Add \"herdr sets it for plugin commands, so invoke the sort through `herdr plugin action invoke`, or export the variable yourself\".\n\nTwo smaller points:\n\n- `README.md:8` still uses `bonkey/…` branch names, although a5cc614 generalised the other examples.\n- `README.md:412`, `:420` and `:422` are unwrapped single lines in a file otherwise wrapped at about 92 columns.\n\nOutside the README, the `verdict_for` docstring (`daemon.py:457-458`) still says the token \"is never wider than two\". That predates the sign-off glyph and contradicts `README.md:147-148`.",
+  "ttft_ms": 1776,
+  "type": "result",
+  "duration_ms": 148331,
+  "uuid": "32c70ac7-b569-49be-a921-097e9bc9a8e7",
+  "ttft_stream_ms": 939,
+  "time_to_request_ms": 28,
+  "first_content_frame_ms": 939,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "herdr-pr-emoji",
+    "ref": "81e8933",
+    "arm": "concise",
+    "prompt": "critique-readme",
+    "wall_s": 149,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}
