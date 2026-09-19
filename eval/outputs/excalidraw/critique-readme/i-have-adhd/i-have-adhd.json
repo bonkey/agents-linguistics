@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 102054,
+  "stop_reason": "end_turn",
+  "session_id": "a9bfa3b2-e320-49fa-befd-3c03eb6ba1ca",
+  "total_cost_usd": 1.0021412500000002,
+  "usage": {
+    "input_tokens": 14,
+    "cache_creation_input_tokens": 27065,
+    "cache_read_input_tokens": 184605,
+    "output_tokens": 8291,
+    "output_tokens_details": {
+      "thinking_tokens": 4104
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 27065,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 4447,
+        "cache_read_input_tokens": 34539,
+        "cache_creation_input_tokens": 2760,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 2760
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 14,
+      "outputTokens": 8291,
+      "cacheReadInputTokens": 184605,
+      "cacheCreationInputTokens": 27065,
+      "webSearchRequests": 0,
+      "costUSD": 1.0021412500000002,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 4104,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 9,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Audit done. No files were modified.** Make Edit 1 first: add a `## Development` section above `## Contributing` (`README.md:97`). Missing local setup is the biggest gap for a contributor. All three edits take about 15 minutes.\n\n## Missing\n1. **No local setup.** `README.md:85` only links to the external Development Guide, so you can't get from clone to a running app using the README alone.\n2. **No prerequisites.** `package.json` requires Node `>=18` and pins `yarn@1.22.22`. CI runs Node 20.x, the Dockerfile uses Node 24, and there is no `.nvmrc`.\n3. **No repo map.** Nothing says that editor code lives in `packages/excalidraw/`, app code in `excalidraw-app/`, and the docs source in `dev-docs/`.\n4. **No pre-PR checklist.** The `.husky/pre-commit` hook is commented out, so nothing catches lint or format errors locally. The PR title check in `.github/workflows/semantic-pr-title.yml` is never mentioned.\n5. **Quick start skips two requirements.** `packages/excalidraw/README.md` calls the CSS import and a container with height \"easy-to-miss\". Without them the canvas renders blank.\n\nLower priority: there is no License section, and no mention of Docker/self-hosting or `yarn start:example`.\n\n## Wrong\n1. **Line 66 says \"circle\".** The tool is called `ellipse` in `packages/common/src/constants.ts:537`.\n2. **Lines 17–18 use `</br>`, which is invalid HTML.** Use `<br />`.\n3. **Line 3 puts `alt` on `<source>`, which is not a valid attribute.** It belongs only on `<img>`.\n4. **The feature list is stale.** It omits text, frames, embeds, laser pointer, elbow arrows, text-to-diagram, command palette and canvas search, all of which exist in the code.\n5. **The linked Development Guide says `localhost:3000`.** `.env.development:30` sets `VITE_APP_PORT=3001`. The guide's source is `dev-docs/docs/introduction/development.mdx`.\n\n## Unclear\n1. **The \"Quick start\" heading (line 83) is ambiguous.** It is for npm integrators, but a contributor will read it as repo setup.\n2. **Line 81 promises plugins with no date.** \"We'll be adding these features as drop-in plugins… in the future\" has no tracking link. Link an issue or delete the sentence.\n3. **\"Integrations\" (lines 105–106) is muddled.** It lists the npm package as an integration and does not label the VS Code extension as third-party (publisher `pomdtr`).\n4. **\"Report here\" (line 99) links to the issue list, not `/issues/new`.** The Contributing section also never mentions the roadmap or the \"Easy\" starter tasks.\n5. **Wording needs four fixes:**\n   - \"following instructions\" → \"The following instructions\"\n   - \"readonly\" → \"read-only\"\n   - \"VScode\" → \"VS Code\"\n   - \"Hand-drawn like style\" → \"Hand-drawn style\"\n\nAll 40 README links resolve. npm returns 403 to curl because it blocks bots; the link is not dead.\n\n## Edit 1: new section above line 97\n````markdown\n## Development\n\nRequirements: Node.js 20 (minimum 18), Yarn 1.22 (classic), Git.\n\n```bash\ngit clone https://github.com/excalidraw/excalidraw.git\ncd excalidraw\nyarn\nyarn start   # http://localhost:3001\n```\n\n| Path | What it is |\n| --- | --- |\n| `packages/excalidraw/` | The editor, published as `@excalidraw/excalidraw` |\n| `packages/*` (others) | Internal packages: `common`, `element`, `math`, `utils`, … |\n| `excalidraw-app/` | The excalidraw.com app (collab, sharing, PWA) |\n| `examples/` | Integration examples (Next.js, browser script) |\n| `dev-docs/` | Source of docs.excalidraw.com |\n\nBefore opening a PR:\n\n```bash\nyarn fix             # Prettier + ESLint autofix\nyarn test:typecheck  # tsc\nyarn test:update     # tests, updates snapshots\n```\n\nPR titles need a semantic prefix (`feat:`, `fix:`, `docs:`, …); CI checks this.\n````\n\n## Edit 2: Quick start (lines 83–95)\nRename the heading to `## Quick start (npm package)`. Add this after the install block:\n\n````markdown\n```tsx\nimport { Excalidraw } from \"@excalidraw/excalidraw\";\nimport \"@excalidraw/excalidraw/index.css\";\n\nexport default function App() {\n  return (\n    <div style={{ height: \"100vh\" }}>\n      <Excalidraw />\n    </div>\n  );\n}\n```\n\nThe CSS import and a parent with non-zero height are both required; without them the canvas is blank.\n````\n\n## Edit 3: line fixes\n| Line | Change |\n| --- | --- |\n| 3 | Remove `alt=\"Excalidraw\"` from `<source>`. |\n| 17–18 | Change `</br>` to `<br />`. |\n| 58 | \"Hand-drawn style.\" |\n| 66 | \"rectangle, ellipse, diamond, arrow, line, text, free-draw, frame, eraser, laser pointer…\" |\n| 67 | \"Arrow-binding, elbow arrows & labeled arrows.\" |\n| 79 | \"read-only link\" |\n| 81 | Delete the sentence, or link a tracking issue. |\n| 85 | \"**Note:** The following instructions… To run this repo locally, see [Development](#development).\" |\n| 99 | Link to `https://github.com/excalidraw/excalidraw/issues/new`. |\n| 100 | Append: \"New here? Start with *Easy* tasks on the [roadmap](https://github.com/orgs/excalidraw/projects/3).\" |\n| 105 | \"[VS Code extension](…) (community-maintained)\". Delete line 106. |\n\nSeparately, the linked Development Guide also labels `yarn test:code` as Prettier when it actually runs ESLint. Want that guide audited next?\n\nNext: paste Edit 1 into `README.md` above line 97.",
+  "ttft_ms": 8097,
+  "type": "result",
+  "duration_ms": 149020,
+  "uuid": "1bf0433c-c8d4-4ea8-b662-eb189ccd29b4",
+  "ttft_stream_ms": 7056,
+  "time_to_request_ms": 6108,
+  "first_content_frame_ms": 7057,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "i-have-adhd",
+    "prompt": "critique-readme",
+    "wall_s": 175,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": true
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

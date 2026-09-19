@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 34001,
+  "stop_reason": "end_turn",
+  "session_id": "65111093-8c30-4b01-8cb8-22cb47b03943",
+  "total_cost_usd": 0.53604425,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 19064,
+    "cache_read_input_tokens": 106857,
+    "output_tokens": 2559,
+    "output_tokens_details": {
+      "thinking_tokens": 248
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 19064,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1182,
+        "cache_read_input_tokens": 28700,
+        "cache_creation_input_tokens": 598,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 598
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 2559,
+      "cacheReadInputTokens": 106857,
+      "cacheCreationInputTokens": 19064,
+      "webSearchRequests": 0,
+      "costUSD": 0.53604425,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 248,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 8,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The allowlist is `ALLOWED_DOMAINS` in `packages/element/src/embeddable.ts:133`. It is a module-private `Set` of bare hostnames. `ALLOW_SAME_ORIGIN` sits next to it at `:152`.\n\n**How matching works** (`matchHostname`, `:439`):\n- It strips `www.` from the URL hostname and does an exact `Set` lookup.\n- If that misses, it replaces the first subdomain with `*` and looks up again, which is how `*.simplepdf.eu` matches.\n- A bare `youtube.com` entry does not match `m.youtube.com`. Add `*.domain` or the explicit subdomain if you need one.\n- `embeddableURLValidator` (`:502`) falls back to `ALLOWED_DOMAINS` only when the host app's `validateEmbeddable` prop is unset or returns `undefined`.\n\n**Adding a domain:**\n1. Add the bare hostname (no `www.`, no protocol) to `ALLOWED_DOMAINS`. This is enough if the site's URL works directly as an iframe `src`. `getEmbedLink` falls through to the generic branch at `:388` with a 560×840 default size.\n2. If the iframe needs `allow-same-origin` in its sandbox, also add the hostname to `ALLOW_SAME_ORIGIN`.\n   - `App.tsx:2097` sets the sandbox flag from this set.\n   - This loosens security, so add it only for trusted domains that break without it.\n   - `gist.github.com`, `val.town` and `giphy.com` are deliberately left out of this set.\n3. If the share URL differs from the embed URL, add a `RE_*` regex at the top of the file and a branch in `getEmbedLink` (`:171`).\n   - The branch rewrites the link and sets `type` and `intrinsicSize`.\n   - Write the result to `embeddedLinkCache`.\n   - For script-based embeds, return `type: \"document\"` with `srcdoc`, as Twitter, Reddit and Gist do. Pass the URL through `escapeDoubleQuotes`.\n4. If users paste an embed snippet (`<iframe …>` or `<blockquote …>`), handle it in `maybeParseEmbedSrc` (`:474`). `RE_GENERIC_EMBED` already covers plain `<iframe src>`.\n5. Add tests in `packages/element/tests/embeddable.test.ts`. \"should validate Google Drive domain by default\" at `:225` is a model for the validator case.\n6. Run `yarn test:update` and `yarn test:typecheck`. Add a note to `packages/excalidraw/CHANGELOG.md` if the change is user-facing.\n\n**One quirk:** when `matchHostname` receives a `Set`, it ignores that argument and always checks `ALLOWED_DOMAINS` (`:450`, `:458`). The `allowSameOrigin` lookup at `:184` still works, because the returned domain is then checked against `ALLOW_SAME_ORIGIN`. The consequence is that an entry present only in `ALLOW_SAME_ORIGIN` has no effect, so the domain must be in both sets.\n\nTo allow a domain in a host app without touching the library, pass the `validateEmbeddable` prop instead. It accepts a boolean, a `RegExp`, an array of strings or `RegExp`s, or a function. The docs are in `dev-docs/docs/@excalidraw/excalidraw/api/props/props.mdx`.",
+  "ttft_ms": 15361,
+  "type": "result",
+  "duration_ms": 90502,
+  "uuid": "13bfdf6b-0d94-4658-8b9b-b240dffebcfd",
+  "ttft_stream_ms": 13770,
+  "time_to_request_ms": 12205,
+  "first_content_frame_ms": 13778,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "caveman-lite",
+    "prompt": "short",
+    "wall_s": 113,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "lite",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 325173,
+  "stop_reason": "end_turn",
+  "session_id": "cc642cec-c411-43ef-a7b9-95c3c13c416e",
+  "total_cost_usd": 2.856681,
+  "usage": {
+    "input_tokens": 52,
+    "cache_creation_input_tokens": 59104,
+    "cache_read_input_tokens": 1122124,
+    "output_tokens": 27871,
+    "output_tokens_details": {
+      "thinking_tokens": 14052
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 59104,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2082,
+        "cache_read_input_tokens": 68992,
+        "cache_creation_input_tokens": 346,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 346
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 52,
+      "outputTokens": 27871,
+      "cacheReadInputTokens": 1122124,
+      "cacheCreationInputTokens": 59104,
+      "webSearchRequests": 0,
+      "costUSD": 2.856681,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 14052,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 36,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "## Verdict: merge (approve, with non-blocking follow-ups)\n\nThe fix is correct, but `useOutsideClick` itself still has the underlying bug. PR #12053 was already merged upstream on 2026-09-07 as `2b1c2a9f`, so this is a post-merge review. Nothing here justifies a revert, and none of the findings below is blocking.\n\nI couldn't run anything in the repo because it has no `node_modules` and you asked me not to modify files. I exported the PR head to a temp directory, installed dependencies and ran the tests there. The temp copy and the local PR ref I created are deleted, and the repo working tree is clean.\n\n**What I verified**\n- **Root cause:** confirmed. `MenuContent` is always mounted, but Radix only mounts the content node when the menu opens. After #11974, the `useOutsideClick` effect returned early on the null ref. Its dependencies never changed, so the listeners were never attached.\n- **Tests at PR head:** all 3 dropdown tests pass.\n- **Tests before the fix:** with the old `DropdownMenuContent.tsx`, the 2 new tests fail and the Escape test passes, as the author said.\n- **Gaps the PR's tests leave:** I wrote 10 probe tests for these, and all 10 pass.\n  - A pointerdown on `canvas.interactive` closes both menus.\n  - Clicking the trigger toggles the menu closed.\n  - A pointerdown inside the menu does not dismiss it.\n  - Document listeners return to zero after 5 open/close cycles, so there is no leak.\n  - When rendered into an iframe, both an outside pointerdown and Escape close the menu. The same probe fails on the pre-fix component.\n- **CI:** lint and coverage are green. The first `semantic` failure was re-run green.\n- **Call sites:** I read all five `DropdownMenu.Content` call sites. Every `onClickOutside` handler is idempotent.\n\n## Findings, by severity\n\n**1. Medium (design): the fix is in the caller, not in the hook that broke**\n- **Location:** `hooks/useOutsideClick.ts:27-30,92`, worked around at `dropdownMenu/DropdownMenuContent.tsx:38-41`.\n- **Cause:** `useOutsideClick` silently does nothing when `ref.current` is null on first run and the callback is memoized. The PR works around this for one caller by building a fake ref with `useMemo(() => ({ current: menuNode }))`. `EyeDropper.tsx:258-276` has the same shape, because it returns `null` until its portal container exists. It only works because its callbacks are inline, so the effect re-runs on every render. Wrapping those callbacks in `useCallback` would reintroduce this regression with no warning.\n- **Fix:** repair the hook itself.\n  - Either have it take the node (`T | null`) as a dependency, or take the owner document from editor context so listeners attach at mount as they did before #11974. The handler's existing `if (!ref.current) return` already covers the closed state.\n  - Then remove the `useMemo` shim. The context option also removes the extra render the state adds on each open and close.\n\n**2. Low–medium (test coverage): the cross-document behaviour is untested**\n- **Location:** `DropdownMenuContent.tsx:63,80-83` and `dropdownMenu/DropdownMenu.test.tsx`.\n- **Cause:** The regression came from cross-document support, and the PR also moves the Escape listener to `menuNode.ownerDocument`. No test renders into another document, so neither change is covered. The behaviour does work, as my probe showed.\n- **Fix:** add a case to `tests/crossDocument.test.tsx`, which already has the iframe setup. Open the main menu, fire `pointerDown` on the iframe's `canvas.interactive`, then fire Escape on the iframe document, and assert the menu closes both times.\n\n**3. Low (test fidelity): the test clicks a canvas users cannot click**\n- **Location:** `DropdownMenu.test.tsx:37`.\n- **Cause:** `container.querySelector(\"canvas\")` returns `excalidraw__canvas static`, which has `pointer-events: none` in `css/styles.scss:127-130`. Real clicks land on `canvas.interactive` and go through App's pointer-down handler. The test therefore skips the real path, although I verified that path works too.\n- **Fix:** query `canvas.interactive`.\n\n**4. Low (latent): the fake ref is not cleared on unmount**\n- **Location:** `DropdownMenuContent.tsx:41,45-60`.\n- **Cause:** React sets a real ref to null when the node unmounts. This `useMemo` object instead keeps pointing at the detached node until the effect cleanup runs. A pointerdown in that window calls `onClickOutside` again for a menu that is already closed. This is harmless today because every handler is idempotent. `useMemo` is also only a caching hint, so it is a weak basis for a ref's identity.\n- **Fix:** the hook fix in finding 1 covers this. Until then, add a comment saying `onClickOutside` must be idempotent.\n\n**5. Out of scope, worth a follow-up issue**\n- **Location:** `Sidebar/Sidebar.tsx:102,137`, plus an inherent limit of #11974.\n- **Cause:** Sidebar still binds Escape and the `.Dialog` lookup to the global `document`. That is the same cross-document bug this PR fixed for dropdowns. Separately, a pointerdown in the top-level document does not dismiss a menu open in an iframe or popout; my probe confirmed this. The PR did not introduce either problem.\n- **Fix:** use `islandRef.current?.ownerDocument` in Sidebar. Decide separately whether clicks in the host document should dismiss menus.\n\n**6. Process: merged with no review**\n- **Location:** PR #12053 on GitHub.\n- **Cause:** The PR was self-merged 7 minutes after opening with zero reviews, and it fixes a regression from a PR the same author co-wrote.\n- **Fix:** get a reviewer on the follow-up for finding 1, since that changes a shared hook.",
+  "ttft_ms": 10247,
+  "type": "result",
+  "duration_ms": 434763,
+  "uuid": "3ecad73a-d646-4768-85f0-a1f55dde6bef",
+  "ttft_stream_ms": 9535,
+  "time_to_request_ms": 8496,
+  "first_content_frame_ms": 9535,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "default",
+    "prompt": "review-pr-12053",
+    "wall_s": 452,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

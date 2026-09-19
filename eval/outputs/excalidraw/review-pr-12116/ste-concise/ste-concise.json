@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 133360,
+  "stop_reason": "end_turn",
+  "session_id": "b25e6ce2-231e-469b-834a-9a19ba27dcca",
+  "total_cost_usd": 1.3745952499999998,
+  "usage": {
+    "input_tokens": 20,
+    "cache_creation_input_tokens": 35474,
+    "cache_read_input_tokens": 273661,
+    "output_tokens": 11930,
+    "output_tokens_details": {
+      "thinking_tokens": 5254
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 35474,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 4385,
+        "cache_read_input_tokens": 44177,
+        "cache_creation_input_tokens": 1544,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1544
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 20,
+      "outputTokens": 11930,
+      "cacheReadInputTokens": 273661,
+      "cacheCreationInputTokens": 35474,
+      "webSearchRequests": 0,
+      "costUSD": 1.3745952499999998,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 5254,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 18,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: reject.** Close [#12116](https://github.com/excalidraw/excalidraw/pull/12116) and send the correction to Crowdin. The repository is the wrong place for this fix, and the edited strings stay wrong after the change.\n\nThe PR is one commit, 650527f6, made on 17 September at 10:07 +0530. It changes 4 lines in `packages/excalidraw/locales/si-LK.json`.\n\n## Findings, most severe first\n\n1. Wrong channel for the fix.\n   - Location: `packages/excalidraw/locales/si-LK.json`, the whole diff.\n   - Cause: Crowdin owns the locale files (`crowdin.yml`, `dev-docs/docs/introduction/contributing.mdx:70`). Every commit to this file since 12 December 2023 is from Excalidraw Bot. The next Crowdin sync will probably overwrite a manual edit.\n   - Fix: correct the 4 strings in the Crowdin project, then close the PR.\n\n2. The change has no effect at runtime.\n   - Location: `packages/excalidraw/i18n.ts:21-75`, `packages/excalidraw/locales/percentages.json:46`, `packages/excalidraw/components/InitializeApp.tsx:26`.\n   - Cause: the `languages` list does not contain `si-LK`. Its completion is 65, below `COMPLETION_THRESHOLD = 85`. `langCode=\"si-LK\"` falls back to English, so no build loads this file, and the bug in the PR body cannot occur.\n   - Fix: none in code. The work belongs in Crowdin, with no urgency.\n\n3. `publishSuccessDialog.content` still drops `<link>…</link>`.\n   - Location: `si-LK.json:511`, use site `packages/excalidraw/components/LibraryMenuHeaderContent.tsx:116-128`.\n   - Cause: the string has no `<link>` tag, so `Trans` never calls the `link` prop. The URL of the submitted library does not render. The base text reads \"publication success content\", a gloss of the key name. The result is \"publication success content (name)\".\n   - Fix: translate the full English sentence in Crowdin, with `{{authorName}}` and `<link>…</link>`.\n\n4. `toast.copyToClipboardAsPng` interpolates wrong strings.\n   - Location: `si-LK.json:566`, with `:570-571`, use site `packages/excalidraw/actions/actionClipboard.tsx:224-231`.\n   - Cause: `{{exportSelection}}` resolves to `toast.canvas` or `toast.selection`. In si-LK these read \"canvas toast\" and \"selection toast\". The toast then reads \"Copied to clipboard as PNG (canvas toast, …)\".\n   - Fix: correct `toast.canvas` and `toast.selection` first. Then put `{{exportSelection}}` in the sentence as the object, and keep the `\\n({{exportColorScheme}})` layout.\n\n5. `toast.pasteAsSingleElement` loses the instruction.\n   - Location: `si-LK.json:572`, use site `packages/excalidraw/components/App.tsx:5130`.\n   - Cause: the base text reads \"paste as a single element\", a gloss of the key name. It drops \"Use … to\" and the second clause. The appended `({{shortcut}})` gives a label, not an instruction.\n   - Fix: translate the full English sentence in Crowdin.\n\n6. The scope does not match the title.\n   - Location: `si-LK.json:280`, `:293`, `:410`, `:569`.\n   - Cause: `{{numShapes}}`, `{{maxSize}}` and `{{eventId}}` stay dropped. [#12097](https://github.com/excalidraw/excalidraw/issues/12097) tracks them. `toast.fileSavedToFilename` drops `{filename}`, which `packages/excalidraw/actions/actionExport.tsx:297` replaces. No issue lists this one. 13 more strings drop tags such as `<link>`, `<bold>` and `<button>`.\n   - Fix: add `{filename}` and the tag drops to [#12115](https://github.com/excalidraw/excalidraw/issues/12115), and correct them in Crowdin.\n\n7. `alerts.removeItemsFromsLibrary` has the wrong tone for a confirm dialog.\n   - Location: `si-LK.json:285`.\n   - Cause: the text reads \"Remove items from library (3)\". The English source is a question.\n   - Fix: a Sinhala speaker writes the question form with `{{count}}` inside the sentence.\n\n8. The PR body has two errors and the PR has no test.\n   - Location: the PR description.\n   - Cause: the body says \"4 missing placeholder tokens\" and lists 5. It cites the parity suite of [#12109](https://github.com/excalidraw/excalidraw/pull/12109) as current. #12109 is open, and `packages/excalidraw/tests/localePlaceholders.test.ts` does not exist at c0ad61c6.\n   - Fix: correct the body. The parity check belongs in #12109.\n\n## Validation\n\nI ran a parity script that compares `en.json` with the PR version of `si-LK.json`. The JSON parses, and the 5 tokens now match. I ran no test suite, because the change is JSON only. GitHub shows 0 check runs for 650527f6.\n\nThe Sinhala glosses in findings 3, 4, 5 and 7 are my own reading. The author states they do not speak Sinhala. The same pattern of glossed key names appears across the file, for example `errorSplash.headingMain` reads \"main error\". A Sinhala speaker must confirm the final strings.\n\nThe option that stays open is \"request changes\", which applies only if the maintainers accept direct locale edits outside Crowdin. In that case, require a Sinhala speaker to supply the full strings for findings 3 to 5 and 7.\n\nI changed no tracked file. I created a local branch `pr-12116` and the scratch file `/tmp/si-LK-pr.json` to read the diff.",
+  "ttft_ms": 12600,
+  "type": "result",
+  "duration_ms": 183978,
+  "uuid": "a0336c7f-88e6-4398-a973-7c1897879b57",
+  "ttft_stream_ms": 11644,
+  "time_to_request_ms": 9394,
+  "first_content_frame_ms": 11645,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "ste-concise",
+    "prompt": "review-pr-12116",
+    "wall_s": 206,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": true,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "agents-output-styles:STE Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

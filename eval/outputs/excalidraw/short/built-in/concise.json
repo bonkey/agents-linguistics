@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 24190,
+  "stop_reason": "end_turn",
+  "session_id": "1b5a176e-4e89-4a67-9f9b-956b2106149f",
+  "total_cost_usd": 0.3727335,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 13563,
+    "cache_read_input_tokens": 87694,
+    "output_tokens": 1589,
+    "output_tokens_details": {
+      "thinking_tokens": 92
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 13563,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 754,
+        "cache_read_input_tokens": 23561,
+        "cache_creation_input_tokens": 249,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 249
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 1589,
+      "cacheReadInputTokens": 87694,
+      "cacheCreationInputTokens": 13563,
+      "webSearchRequests": 0,
+      "costUSD": 0.3727335,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 92,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 6,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The allowlist is the `ALLOWED_DOMAINS` set in `packages/element/src/embeddable.ts:133`. No other file in the repo references these domains apart from the changelog.\n\nTo add a domain:\n\n1. **Add the bare hostname to `ALLOWED_DOMAINS`**, without `www.` (it is stripped before matching). A `*.example.com` entry wildcards only the first subdomain label. `embeddableURLValidator` (line 502) falls back to this set when the host app passes no `validateEmbeddable` prop.\n2. **Add it to `ALLOW_SAME_ORIGIN` (line 152) only if the embed needs it.** That adds `allow-same-origin` to the iframe sandbox, which some embeds need for cookies or storage. Leave the domain out if the embed works without it, because it weakens the sandbox.\n3. **Add URL rewriting in `getEmbedLink` (line 171) if the share URL differs from the embeddable URL.** The pattern is a `RE_*` regex at the top of the file plus a branch that rewrites the link and sets `type` and `aspectRatio`. YouTube, Vimeo, Figma, Google Drive and others do this. Sites that need script-based embeds (Twitter, Reddit, gists) return a `srcdoc` via `createSrcDoc` instead.\n4. **Add a regex branch in `maybeParseEmbedSrc` (line 474) if users will paste site-specific embed HTML.** `RE_GENERIC_EMBED` already handles plain `<iframe src=…>` snippets.\n\nWatch for a quirk in `matchHostname` (line 450). When given a Set, it checks `ALLOWED_DOMAINS` rather than the set that was passed in. The `ALLOW_SAME_ORIGIN` lookup at line 184 still works because the returned hostname is checked again with `ALLOW_SAME_ORIGIN.has(...)`, but a domain must be in `ALLOWED_DOMAINS` for that lookup to match at all.\n\nThe repo has no dedicated tests for the allowlist. Run `yarn test:update` and `yarn test:typecheck` as usual, and add a note to `packages/excalidraw/CHANGELOG.md`.",
+  "ttft_ms": 14715,
+  "type": "result",
+  "duration_ms": 81289,
+  "uuid": "6e6ccdb8-22ab-418b-95d3-8cbb6a025063",
+  "ttft_stream_ms": 14092,
+  "time_to_request_ms": 12594,
+  "first_content_frame_ms": 14099,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "concise",
+    "prompt": "short",
+    "wall_s": 99,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 6386,
+  "stop_reason": "end_turn",
+  "session_id": "9fddf747-9eab-4dbf-a1ec-93ae22df6010",
+  "total_cost_usd": 0.2151485,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 9351,
+    "cache_read_input_tokens": 10234,
+    "output_tokens": 511,
+    "output_tokens_details": {
+      "thinking_tokens": 350
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 9351,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 511,
+        "cache_read_input_tokens": 10234,
+        "cache_creation_input_tokens": 9351,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 9351
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 511,
+      "cacheReadInputTokens": 10234,
+      "cacheCreationInputTokens": 9351,
+      "webSearchRequests": 0,
+      "costUSD": 0.2151485,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 350,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 1,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "ADHD MODE (`i-have-adhd`, always-on via SessionStart hook) is the only output style in context. Its rules: lead with the next action, number multi-step tasks, end with one concrete next action, suppress tangents, restate state each turn, give specific time estimates, make completed work visible, keep a matter-of-fact tone for errors, cap lists at 5 items, and use no preamble, recap, or closing pleasantries. Say \"stop adhd mode\" to turn it off.",
+  "ttft_ms": 4985,
+  "type": "result",
+  "duration_ms": 6595,
+  "uuid": "ea1261ba-8747-4284-9e97-43e4b49327e5",
+  "ttft_stream_ms": 1213,
+  "time_to_request_ms": 207,
+  "first_content_frame_ms": 1214,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "i-have-adhd",
+    "prompt": "probe",
+    "wall_s": 8,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": true
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

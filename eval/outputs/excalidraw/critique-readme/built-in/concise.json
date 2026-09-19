@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 50342,
+  "stop_reason": "end_turn",
+  "session_id": "d9a66a1e-911b-45d2-bda8-d021f3026eac",
+  "total_cost_usd": 0.6070119999999999,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 19791,
+    "cache_read_input_tokens": 108768,
+    "output_tokens": 3678,
+    "output_tokens_details": {
+      "thinking_tokens": 146
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 19791,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2131,
+        "cache_read_input_tokens": 29426,
+        "cache_creation_input_tokens": 612,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 612
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 3678,
+      "cacheReadInputTokens": 108768,
+      "cacheCreationInputTokens": 19791,
+      "webSearchRequests": 0,
+      "costUSD": 0.6070119999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 146,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 7,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The README is a product landing page. It gives a first-time contributor nothing to get started with locally: no clone, install, run, test, or repo layout. All of that sits behind external links to `docs.excalidraw.com`, and some of it is wrong. I changed no files.\n\n## Wrong\n\n1. **Dev server port is 3001, not 3000 (linked Development Guide).** `.env.development:30` sets `VITE_APP_PORT=3001`, and `excalidraw-app/vite.config.mts:17` only falls back to 3000 when that variable is unset. The guide tells you to open `localhost:3000`. Port 3000 is what `docker-compose.yml` exposes.\n   - Edit: change it to `http://localhost:3001` in `dev-docs/docs/introduction/development.mdx`.\n2. **`yarn test:code` and `yarn fix` are mislabeled (same guide).**\n   - `yarn test:code` is described as \"Test for formatting with Prettier\", but it runs ESLint. Prettier is `yarn test:other`.\n   - `yarn fix` is described as \"Reformat all files with Prettier\", but it runs both Prettier and ESLint `--fix`.\n3. **README L81: \"We'll be adding these features as drop-in plugins for the npm package in the future.\"** This is a long-standing promise with no link or tracking issue.\n   - Edit: delete it, or link the roadmap item.\n4. **README L54: \"The Excalidraw editor (npm package) supports: 💯 Free & open-source.\"** The first bullet is not a feature the editor \"supports\".\n   - Edit: move it to the tagline, and fix \"Hand-drawn like\" to \"Hand-drawn-like\".\n\n## Missing\n\n5. **No local development section.** The \"Quick start\" is for npm consumers only. Proposed new section after \"Quick start\":\n\n   ````md\n   ## Developing locally\n\n   Requires Node.js >= 18 (CI uses 20) and Yarn 1.x (`packageManager: yarn@1.22.22`).\n\n   ```bash\n   git clone https://github.com/excalidraw/excalidraw.git\n   cd excalidraw\n   yarn            # install all workspaces\n   yarn start      # app at http://localhost:3001\n   ```\n\n   Before opening a PR:\n\n   ```bash\n   yarn test:typecheck   # tsc\n   yarn test:update      # vitest, updates snapshots\n   yarn fix              # prettier + eslint --fix\n   ```\n\n   See the [Development Guide](https://docs.excalidraw.com/docs/introduction/development) for Docker, collaboration server, and self-hosting.\n   ````\n\n6. **No repo layout.** The README never says this is a monorepo. Proposed short section:\n\n   ```md\n   ## Repository structure\n\n   - `packages/excalidraw/` – the `@excalidraw/excalidraw` React component (npm)\n   - `packages/{common,element,math,utils,…}` – internal/supporting packages\n   - `excalidraw-app/` – the excalidraw.com web app\n   - `examples/` – integration examples (Next.js, browser script)\n   - `dev-docs/` – source of docs.excalidraw.com\n   ```\n\n7. **No Node or Yarn versions anywhere a contributor would look.**\n   - There is no `.nvmrc`.\n   - `engines` says `>=18`, CI uses 20, and the Dockerfile uses 24.\n   - The guide says \"Yarn v1 or v2.4.2+\", but `packageManager` pins `yarn@1.22.22`.\n   - Edit: state the versions in the README (see item 5) and consider adding an `.nvmrc` containing `20`.\n8. **Quick start omits the two requirements that break first-time setups.** `packages/excalidraw/README.md` calls them \"easy-to-miss\": the CSS import and a parent with non-zero height. Edit: add after the install block:\n\n   ```tsx\n   import { Excalidraw } from \"@excalidraw/excalidraw\";\n   import \"@excalidraw/excalidraw/index.css\";\n\n   <div style={{ height: \"100vh\" }}><Excalidraw /></div>\n   ```\n\n   Also mention `examples/` and the `@next` tag.\n9. **Contributing section lacks the rules contributors trip on.** Edit: add bullets for:\n   - PR titles need a semantic prefix (`feat:`, `fix:`, …).\n   - Open an issue first for major changes.\n   - CI checks on first-time PRs wait for maintainer approval.\n   - Each PR gets a staging deploy to test manually.\n   - Link the [roadmap](https://github.com/orgs/excalidraw/projects/3) for \"Easy\" tasks.\n10. **No pointer to in-repo docs.** `CONTRIBUTING.md` is a single line linking out. The docs source is in `dev-docs/docs/introduction/*.mdx`, so it is readable offline and fixable by PR.\n    - Edit: mention `dev-docs/` in the README.\n    - Optionally expand `CONTRIBUTING.md` with the setup steps.\n11. **No security/disclosure or Code of Conduct pointer.** Both are common expectations for a project of this size.\n\n## Unclear\n\n12. **The \"Quick start\" heading is ambiguous.** The disambiguating note is bolded prose under the heading.\n    - Edit: rename it to \"Quick start (using the npm package)\" and keep \"Developing locally\" as its sibling.\n13. **The \"Integrations\" list has two items, and one is the npm package itself, already linked three times.**\n    - Edit: drop the npm entry.\n    - Alternatively, merge the list into \"Who's integrating Excalidraw\".\n14. **The \"PRs welcome\" badge and the Contributing links all go to the external docs site.** If that site is down or drifts (see items 1 and 2), contributors have no fallback.\n    - Edit: link the badge to `CONTRIBUTING.md`.\n15. **Stale branding and markup:**\n    - The alt text says \"Follow Excalidraw on Twitter\".\n    - `</br>` on L17–18 is invalid HTML; it should be `<br />`.\n    - \"VScode\" should be \"VS Code\".\n\nPriority order if you only make a few changes: item 5 (dev section), items 1 and 2 (wrong port and command descriptions), item 6 (repo layout), item 8 (CSS and height in the quick start).",
+  "ttft_ms": 12519,
+  "type": "result",
+  "duration_ms": 88378,
+  "uuid": "92bff8a1-3642-487b-895b-7cfefacd4825",
+  "ttft_stream_ms": 12496,
+  "time_to_request_ms": 9050,
+  "first_content_frame_ms": 12499,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "concise",
+    "prompt": "critique-readme",
+    "wall_s": 101,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Concise"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

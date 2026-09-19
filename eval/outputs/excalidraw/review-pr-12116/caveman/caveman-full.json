@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 90804,
+  "stop_reason": "end_turn",
+  "session_id": "97eb068c-cb42-4154-a9a6-3a568fd1789c",
+  "total_cost_usd": 1.01685325,
+  "usage": {
+    "input_tokens": 24,
+    "cache_creation_input_tokens": 27506,
+    "cache_read_input_tokens": 326173,
+    "output_tokens": 7699,
+    "output_tokens_details": {
+      "thinking_tokens": 2411
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 27506,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1262,
+        "cache_read_input_tokens": 35895,
+        "cache_creation_input_tokens": 1845,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1845
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 24,
+      "outputTokens": 7699,
+      "cacheReadInputTokens": 326173,
+      "cacheCreationInputTokens": 27506,
+      "webSearchRequests": 0,
+      "costUSD": 1.01685325,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 2411,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 13,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: reject.** The edit goes to the wrong place. Crowdin manages `si-LK.json`, the file is never loaded at runtime, and the next Crowdin sync reverts the change.\n\nI could not use `gh` because it is not authenticated, so I fetched the diff over HTTP. The PR's base blob matches the local `si-LK.json`. The PR changes one file, with 4 insertions and 4 deletions. No files were modified. I ran no tests, because the change is JSON only.\n\nFindings, most severe first:\n\n1. **Direct edit to a Crowdin-managed file**\n   - Location: `packages/excalidraw/locales/si-LK.json:285,511,566,572`.\n   - Cause: `packages/excalidraw/locales/README.md:3` forbids direct edits to locale files. `origin/l10n_master` still holds the old strings (lines 289, 519, 574, 580 there). The next \"Update translations from Crowdin\" PR overwrites these edits.\n   - Fix: close the PR and edit the strings on Crowdin.\n\n2. **No runtime effect**\n   - Location: `packages/excalidraw/i18n.ts` language list, and `packages/excalidraw/components/InitializeApp.tsx:26`.\n   - Cause: `si-LK` is not registered in the language list. Its completion in `percentages.json:46` is 65, below `COMPLETION_THRESHOLD = 85` (`i18n.ts:9`). `languages.find(...) || defaultLang` falls back to English, so `si-LK.json` is never imported. The PR fixes nothing a user can see.\n   - Fix: no in-repo fix. To ship si-LK, raise its Crowdin completion to 85% or more, then register the language.\n\n3. **Placeholders appended in parentheses, not integrated into the sentence**\n   - Location: `si-LK.json:285,511,566,572`.\n   - Cause: the existing si-LK strings translate the key names, not the English values. For `publishSuccessDialog.content`, English is \"Thank you {{authorName}}. Your library has been submitted for review…\", while si-LK reads roughly \"publish success content ({{authorName}})\". For the PNG toast, `toast.canvas` and `toast.selection` (`:570-571`) read \"canvas toast\" and \"selection toast\", and `actionClipboard.tsx:224` inserts them into the message. The output is grammatically broken.\n   - Fix: retranslate these strings from the English values on Crowdin, with the placeholders inside the sentence.\n\n4. **Placeholder restore is incomplete**\n   - Location: `si-LK.json:280,293,410,511,569`.\n   - Cause: several placeholders and tags are still missing after the patch:\n     - `alerts.confirmAddLibrary` lacks `{{numShapes}}`.\n     - `errors.fileTooBig` lacks `{{maxSize}}`.\n     - `errorSplash.trackedToSentry` lacks `{{eventId}}`.\n     - `toast.fileSavedToFilename` lacks the single-brace `{filename}`, which `actionExport.tsx:297` fills with `.replace`.\n     - `publishSuccessDialog.content` still lacks `<link>…</link>`, so the status link at `LibraryMenuHeaderContent.tsx:117` does not render.\n     - Eleven more strings lack `<bold>`, `<link>`, `<button>` or `<br>` tags, under `errors.brave_measure_text_error.*`, `errorSplash.*`, `publishDialog.note*` and `overwriteConfirm.modal.*`.\n   - Fix: restore all of them on Crowdin.\n\nTell the author the intent is good, and point them to https://crowdin.com/translate/excalidraw/10.",
+  "ttft_ms": 11902,
+  "type": "result",
+  "duration_ms": 140379,
+  "uuid": "981f9bb6-fd99-45d7-8bba-a49540f39b9f",
+  "ttft_stream_ms": 11605,
+  "time_to_request_ms": 9714,
+  "first_content_frame_ms": 11612,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "caveman-full",
+    "prompt": "review-pr-12116",
+    "wall_s": 159,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "full",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

@@ -2,3 +2,5 @@
 eval/.cache/
 *.failed.log
 __pycache__/
+.vercel
+.env*

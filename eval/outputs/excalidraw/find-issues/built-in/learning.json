@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 489175,
+  "stop_reason": "end_turn",
+  "session_id": "bdcdcd76-5d70-49ef-8458-c3724c369d13",
+  "total_cost_usd": 4.141141999999999,
+  "usage": {
+    "input_tokens": 42,
+    "cache_creation_input_tokens": 93156,
+    "cache_read_input_tokens": 1383608,
+    "output_tokens": 38634,
+    "output_tokens_details": {
+      "thinking_tokens": 28275
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 93156,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 9762,
+        "cache_read_input_tokens": 100288,
+        "cache_creation_input_tokens": 3115,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3115
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 42,
+      "outputTokens": 38634,
+      "cacheReadInputTokens": 1383608,
+      "cacheCreationInputTokens": 93156,
+      "webSearchRequests": 0,
+      "costUSD": 4.141141999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 28275,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 32,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "I found 12 bugs and risks in the clipboard and paste handling, listed below by severity. All of them come from reading the code: `node_modules` isn't installed, so I couldn't run the test suites, and installing would have modified the tree. No files were changed.\n\n`★ Insight ─────────────────────────────────────`\n- Clipboard data is only readable in the same tick as the event. The code reads every item correctly within that tick.\n- Several of the bugs below come from the opposite mistake: an `async` function's promise is dropped. `withBatchedUpdates` and `actionCut` both do this, so failures never reach the user.\n`─────────────────────────────────────────────────`\n\n## High\n\n**1. Cut deletes the selection without knowing whether the copy succeeded**\n- **Location:** `packages/excalidraw/actions/actionClipboard.tsx:117-121`, `packages/excalidraw/actions/manager.tsx:145-147`, `packages/excalidraw/components/App.tsx:4474`\n- **Cause:**\n  - `actionCut` calls `actionCopy.perform(...)` without awaiting it, then runs `actionDeleteSelected` in the same tick. The copy failure result (`{appState: {errorMessage}}`) is thrown away.\n  - `actionCut` also has a `keyTest` for Ctrl/Cmd+X. `handleKeyDown` calls `preventDefault()` on the keydown, which in the major browsers stops the native `cut` event from firing, and performs the action with `value = null`.\n  - So keyboard cuts never reach `onCut` or the reliable `setData` path. They go through async `navigator.clipboard.writeText`, which fails in cross-origin iframes without `clipboard-write`, in insecure contexts, and in unfocused documents.\n  - The elements disappear and the clipboard holds nothing. Undo is the only recovery.\n- **Fix:** Make `perform` async, await the copy, and return the error without deleting if the copy failed. Remove `keyTest` from `actionCut`, as `actionCopy` already does, so keyboard cuts go through `onCut` with the real `ClipboardEvent`.\n\n**2. HTML paste with any `<img>` drops all the text, and often pastes nothing**\n- **Location:** `packages/excalidraw/clipboard.ts:341-354` and `:532-536`, `App.tsx:4613-4620`, `App.tsx:4977-5008`\n- **Cause:**\n  - One `<img src=\"http…\">` in the pasted HTML makes `parseClipboard` return only `{mixedContent}` and discard `text/plain`.\n  - `addElementsFromMixedContentPaste` then inserts only the images. `ImageURLToFile` uses a CORS `fetch`, which most third-party hosts reject.\n  - Pasting a paragraph with one inline icon therefore shows an error dialog and inserts nothing.\n  - `insertImages([])` still runs, which adds an empty undo entry and triggers `actionFinalize`.\n- **Fix:**\n  - Keep `text` next to `mixedContent` in `ClipboardData`.\n  - Fall back to `addTextFromPaste` when no image resolves.\n  - Skip `insertImages` when the list is empty; ideally insert both text and images.\n\n**3. Errors in the paste pipeline can't be observed**\n- **Location:** `App.tsx:4760`, `packages/excalidraw/reactUtils.ts:10-17`, `actionClipboard.tsx:91-102`, `App.tsx:4687`\n- **Cause:**\n  - `pasteFromClipboard` is an async function wrapped in `withBatchedUpdates`, which returns `void`. The `try/catch` in `actionPaste` only catches synchronous throws from `createPasteEvent`.\n  - `errors.asyncPasteFailedOnParse` is therefore unreachable for real parse or insert failures. The public API type also says it returns a Promise when it actually returns `undefined`.\n  - Known ways to reject silently:\n    - The mermaid import sits outside its `try`, so an offline chunk failure ends the paste instead of falling back to text.\n    - `convertToExcalidrawElements` throws on malformed `excalidraw-api/clipboard` JSON, for example `elements: [null]`.\n    - `addMissingFiles` throws on `files: {a: null}`. This happens after `replaceAllElements` and before `scheduleCapture`/`setState`, which leaves a half-applied paste.\n- **Fix:** Return the promise instead of wrapping the whole async function. Add a top-level `try/catch` that sets `errorMessage`. Move the import inside its `try`.\n\n## Medium\n\n**4. The `files` map from clipboard JSON is trusted as-is**\n- **Location:** `clipboard.ts:543-546`, `App.tsx:4669-4671`, `App.tsx:5326-5363`, `packages/element/src/image.ts:30`\n- **Cause:**\n  - Elements go through `restoreElements`, but `files` is not validated. Any `text/plain` JSON with `type: \"excalidraw\"` qualifies, wherever it came from.\n  - `dataURL` can be an `https://` URL. Because the image is loaded with `image.src = dataURL`, that becomes a tracking beacon stored in the scene's `files`, and anyone the host app shares those files with loads the same URL.\n  - `mimeType` is trusted as claimed, and SVG normalization depends on that claim.\n  - `imageOptions.maxFileSizeBytes` and the resize limits are bypassed.\n- **Fix:**\n  - Require a `data:` URL whose MIME type is in `IMAGE_MIME_TYPES` and matches the claimed type.\n  - Enforce the size limit.\n  - Import only the fileIds that the pasted image elements reference.\n\n**5. Paste treats every clipboard file as an image**\n- **Location:** `clipboard.ts:436-442`, `App.tsx:4639-4657`. The drop handler at `App.tsx:13239-13241` filters correctly.\n- **Cause:**\n  - `getFiles()` filters on `kind === \"file\"` only, but its type predicate claims an image MIME type, so TypeScript doesn't flag the problem.\n  - Pasting a copied PDF or `.excalidraw` file inserts a placeholder, which then fails with \"unsupported file type\".\n  - The early `return` means valid `data.elements` or `data.text` in the same clipboard are never looked at.\n- **Fix:**\n  - Filter with `isSupportedImageFile` and correct the type predicate.\n  - Fall through to the elements and text handling when no image files remain.\n  - Send `.excalidraw` files to `loadFileToCanvas`, as the drop handler does.\n\n**6. The custom MIME type is only written on the event path, so the text editor can paste raw JSON**\n- **Location:** `clipboard.ts:599-636`, `packages/excalidraw/wysiwyg/textWysiwyg.tsx:571-574`\n- **Cause:**\n  - The `writeText` and `execCommand` fallbacks write only `text/plain`.\n  - Context-menu Copy and Cut, keyboard Cut (finding 1) and `exportToClipboard` never set `application/vnd.excalidraw.clipboard+json`.\n  - The text editor relies on that type alone to detect Excalidraw content. Pasting into a text element after one of those copies inserts the whole JSON blob.\n- **Fix:** Also check `text/plain` synchronously with `event.clipboardData.getData`, using a cheap marker check before `JSON.parse`.\n\n**7. Remote image fetching on paste has no limits**\n- **Location:** `App.tsx:4982-4999`, `packages/excalidraw/data/blob.ts:422-445`, `clipboard.ts:223`\n- **Cause:**\n  - Every `<img>` URL is fetched in parallel, with no cap on the count.\n  - There is no timeout, and no size check before `response.blob()`.\n  - `startsWith(\"http\")` is a loose scheme check.\n  - Hundreds of images mean hundreds of requests and placeholders. One slow host hangs the whole paste, because nothing is inserted until every fetch has settled. The user's IP is also sent to third parties without them choosing to.\n- **Fix:**\n  - Cap the number of images.\n  - Add `AbortSignal.timeout`.\n  - Enforce a byte limit.\n  - Parse with `new URL()` and check the protocol.\n\n## Low\n\n**8. The fallback logic in `readSystemClipboard` is tangled**\n- **Location:** `clipboard.ts:262-293`, `:306`\n- **Cause:**\n  - In insecure contexts `navigator.clipboard?.read()` returns `undefined`, so the `for…of` loop throws a TypeError.\n  - The `DataError` \"clipboard is empty\" check looks at the `readText` error, in a branch reached only when `read` doesn't exist. `DataError` actually comes from `read()`, so an empty clipboard shows the generic failure dialog.\n  - The two warning messages are swapped.\n  - `types[type] = file` keeps only one image per MIME type.\n- **Fix:** Check that the API exists first, and handle `DataError` in the outer catch.\n\n**9. Clipboard writes that report success without checking**\n- **Location:** `actionClipboard.tsx:264-268`, `App.tsx:3006-3009`\n- **Cause:** `copyTextToSystemClipboard` is async but isn't awaited inside the `try`, so the `catch` never runs. At `App.tsx:3006-3009` the \"copied to clipboard\" toast shows even when the write failed.\n- **Fix:** Await the call.\n\n**10. The frame-stripping branch in `serializeAsClipboardJSON` can never run**\n- **Location:** `clipboard.ts:150`, `:176-185`\n- **Cause:**\n  - `elementsMap` holds only the copied elements. `getContainingFrame` therefore returns a frame only when that frame is being copied, which is exactly when `framesToCopy.has()` is true. The condition can't be satisfied.\n  - Elements copied without their frame keep a stale `frameId` in the clipboard JSON.\n  - The editor's own paste is saved by `restoreElements` (`restore.ts:874-886`), but `onPaste` hosts and consumers of the exported JSON receive the dangling ids.\n- **Fix:** Test the raw id instead: `element.frameId && !framesToCopyIds.has(element.frameId)`.\n\n**11. Plain-paste detection depends on keyboard layout and a module-level flag**\n- **Location:** `App.tsx:628-630`, `:5635-5644`\n- **Cause:**\n  - `event.key.toLowerCase() === KEYS.V` fails on non-Latin layouts. On a Russian layout the key is \"м\", so Ctrl+Shift+V silently pastes rich content.\n  - The flag and its 100 ms timer are module globals shared by every editor instance on the page.\n- **Fix:** Also match `event.code === CODES.V`, and move the flag to an instance field.\n\n**12. Ctrl/Cmd+C with nothing selected overwrites the system clipboard**\n- **Location:** `App.tsx:4489-4502`\n- **Cause:**\n  - `onCopy` always calls `preventDefault()` and writes JSON, even when `elements` is empty.\n  - It also takes over copying of text selected in non-editable UI inside the container.\n- **Fix:** Return early, without `preventDefault()`, when nothing is selected or when `getSelection()` is non-collapsed.\n\nFinding 1 depends on keydown `preventDefault()` suppressing the `cut` event, which is how Chrome, Firefox and Safari behave. If a browser did not suppress it, `actionCut` would run twice and the second run would overwrite the clipboard with an empty selection, which is also a bug.\n\nFindings 1 and 6 share a root cause: `actionCut` has a `keyTest` and `actionCopy` deliberately does not. Removing it fixes finding 1 and the keyboard-cut part of finding 6.",
+  "ttft_ms": 11067,
+  "type": "result",
+  "duration_ms": 523668,
+  "uuid": "e7cc19c5-45d4-4353-8147-5c1a79dc03bc",
+  "ttft_stream_ms": 10145,
+  "time_to_request_ms": 8150,
+  "first_content_frame_ms": 10145,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "learning",
+    "prompt": "find-issues",
+    "wall_s": 546,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Learning"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

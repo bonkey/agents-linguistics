@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 80413,
+  "stop_reason": "end_turn",
+  "session_id": "4147157b-d23f-46c6-9f1a-95393340fb06",
+  "total_cost_usd": 1.01456875,
+  "usage": {
+    "input_tokens": 12,
+    "cache_creation_input_tokens": 30880,
+    "cache_read_input_tokens": 173395,
+    "output_tokens": 7070,
+    "output_tokens_details": {
+      "thinking_tokens": 2576
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 30880,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 4399,
+        "cache_read_input_tokens": 40130,
+        "cache_creation_input_tokens": 984,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 984
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 12,
+      "outputTokens": 7070,
+      "cacheReadInputTokens": 173395,
+      "cacheCreationInputTokens": 30880,
+      "webSearchRequests": 0,
+      "costUSD": 1.01456875,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 2576,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 8,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "README review complete. No files modified. `yarn start` not run; claims below come from config files and `curl` checks.\n\n## Wrong\n\n1. `README.md:110`: Google Cloud link is dead. `https://googlecloudcheatsheet.withgoogle.com/architecture` redirects to `https://cloud.google.com/products`. Drop link or keep plain text \"Google Cloud\".\n2. `README.md:81`: \"We'll be adding these features as drop-in plugins... in the future.\" Unchanged since 2023-02-15 (`c587b85b`). Stale promise. Delete, or link a tracking issue.\n3. `README.md:66`: \"circle\". Tool name is `ellipse` (`packages/common/src/constants.ts:537`). List omits text, image, frame, embeddable, laser.\n4. `README.md:52-69`: feature list outdated. Missing frames, Mermaid import (`@excalidraw/mermaid-to-excalidraw` dependency), embeds, laser pointer, sticky notes (`afa3a653`).\n5. `README.md:85`: linked Development Guide says `http://localhost:3000`. `.env.development` sets `VITE_APP_PORT=3001`, and `excalidraw-app/vite.config.mts:17` reads it. Real port 3001.\n6. Same guide (`dev-docs/docs/introduction/development.mdx`): `yarn test:code` labeled \"formatting with Prettier\". It runs eslint; Prettier check is `yarn test:other`. Guide says \"Yarn v1 or v2.4.2+\"; `package.json` pins `yarn@1.22.22`.\n7. `README.md:105`: \"VScode\". Correct: \"VS Code\".\n8. `README.md:17-18`: `</br>` invalid HTML. `README.md:3`: `alt` on `<source>` invalid.\n9. `README.md:35`: twitter.com redirects to x.com. Minor.\n\n## Missing (first-time contributor view)\n\n1. No local setup in README. Only an external link (`README.md:85`), buried in a note about npm install.\n2. No prerequisites. `engines.node >=18.0.0`, CI uses Node 20.x, Dockerfile uses `node:24`. No `.nvmrc`. Yarn 1.22.22 required.\n3. No repository map. Contributor cannot tell `excalidraw-app/` from `packages/excalidraw/`. `packages/` also holds `common`, `element`, `math`, `utils`, `fractional-indexing`, `laser-pointer`. `dev-docs/` holds docs source.\n4. No test and lint commands: `yarn test`, `yarn test:update`, `yarn test:typecheck`, `yarn test:code`, `yarn fix`, `yarn test:all`.\n5. Pre-commit hook disabled: `.husky/pre-commit` has `# yarn lint-staged` commented out. Nothing auto-formats. Contributor must run `yarn fix` manually. README silent.\n6. PR title rule absent. `.github/workflows/semantic-pr-title.yml` enforces semantic prefix (`feat:`, `fix:`, ...).\n7. Collaboration setup absent. Dev app expects `excalidraw-room` at `http://localhost:3002` (`.env.development`).\n8. Quick start has install only, no usage. CSS import and non-zero container height are required (`packages/excalidraw/README.md` documents both). Blank canvas otherwise.\n9. No roadmap or starter-issue pointer. Roadmap link exists only in external docs.\n10. `CONTRIBUTING.md` is one redirect line. Offline contributor gets nothing.\n\n## Unclear\n\n1. \"Quick start\" targets integrators, not contributors. Title does not say so.\n2. `README.md:73`: \"minimal showcase\". App has collaboration, encryption, PWA, Firebase. Not minimal.\n3. \"Integrations\" and \"Who's integrating Excalidraw\" overlap. \"Integrations\" lists npm package as an integration of itself.\n\n## Proposed edits\n\nRename `## Quick start` to `## Quick start (npm package)`. Replace note and body:\n\n````markdown\nInstall the package with its React peer dependencies:\n\n```bash\nnpm install react react-dom @excalidraw/excalidraw\n```\n\n```tsx\nimport { Excalidraw } from \"@excalidraw/excalidraw\";\nimport \"@excalidraw/excalidraw/index.css\";\n\nexport default function App() {\n  return (\n    <div style={{ height: \"100vh\" }}>\n      <Excalidraw />\n    </div>\n  );\n}\n```\n\nThe parent container must have a non-zero height. See the [package README](./packages/excalidraw/README.md) and the [documentation](https://docs.excalidraw.com/docs/@excalidraw/excalidraw/installation) for details.\n````\n\nAdd new section before `## Contributing`:\n\n````markdown\n## Development\n\nRequirements: Node.js 20 (18 or newer works), Yarn 1.22.x, Git.\n\n```bash\ngit clone https://github.com/excalidraw/excalidraw.git\ncd excalidraw\nyarn\nyarn start   # opens http://localhost:3001\n```\n\nRepository layout:\n\n- `excalidraw-app/` - the excalidraw.com web app\n- `packages/excalidraw/` - the `@excalidraw/excalidraw` React component\n- `packages/{common,element,math,utils}/` - shared internal packages\n- `examples/` - integration examples (Next.js, browser script)\n- `dev-docs/` - source of docs.excalidraw.com\n\nBefore opening a pull request:\n\n```bash\nyarn fix             # format and lint (no pre-commit hook does this for you)\nyarn test:typecheck  # TypeScript\nyarn test:update     # tests, updates snapshots\n```\n\nPull request titles must start with a semantic prefix such as `feat:` or `fix:`.\nReal-time collaboration needs a local [excalidraw-room](https://github.com/excalidraw/excalidraw-room) server on port 3002.\n````\n\nSmaller edits:\n\n- `README.md:66`: `rectangle, ellipse, diamond, arrow, line, free-draw, text, image, frame, eraser...`\n- `README.md:52-69`: add bullets for frames, Mermaid import, embeds, laser pointer.\n- `README.md:81`: delete sentence.\n- `README.md:73`: \"minimal showcase\" becomes \"full-featured example\".\n- `README.md:100`: append roadmap link `https://github.com/orgs/excalidraw/projects/3`.\n- `README.md:103-106`: merge \"Integrations\" into \"Who's integrating Excalidraw\", drop npm package bullet, fix \"VS Code\".\n- `README.md:110`: unlink Google Cloud.\n- `README.md:17-18`: `</br>` becomes `<br />`. `README.md:3`: remove `alt` from `<source>`.\n- `dev-docs/docs/introduction/development.mdx`: port 3000 becomes 3001, fix `yarn test:code` label, state Yarn 1.22.x.\n\nUnverified: CodeSandbox link returned 403 to `curl`. Likely bot block, not a dead link.",
+  "ttft_ms": 8302,
+  "type": "result",
+  "duration_ms": 120067,
+  "uuid": "0edff5fe-11cd-4a6d-8013-dd2fe02c0d70",
+  "ttft_stream_ms": 7100,
+  "time_to_request_ms": 5844,
+  "first_content_frame_ms": 7112,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "caveman-ultra",
+    "prompt": "critique-readme",
+    "wall_s": 147,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "ultra",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

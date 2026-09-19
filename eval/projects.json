@@ -91,7 +91,7 @@
    "stars": 132285,
    "license": "MIT",
    "description": "Virtual whiteboard for sketching hand-drawn like diagrams.",
-   "status": "pending",
+   "status": "done",
    "prompts": [
     {
      "id": "review-pr-12053",
@@ -134,7 +134,8 @@
      "text": "Where is the allowlist of embeddable domains kept, and what does adding a new domain involve?"
     }
    ],
-   "results": []
+   "results": [],
+   "notes": "50 runs on 2026-09-19: 10 arms x 5 prompts, in parallel. All 10 isolation probes passed. The review-pr sessions run without GitHub credentials and read the pull request anonymously. Results in eval/outputs/excalidraw/<prompt>/<family>/<arm>.json. Harness recorded in each file under .eval.harness."
   },
   {
    "id": "vitepress",

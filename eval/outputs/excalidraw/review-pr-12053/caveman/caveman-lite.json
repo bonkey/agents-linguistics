@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 176173,
+  "stop_reason": "end_turn",
+  "session_id": "6e5c30d3-e157-4002-9d35-bcabecf43bf5",
+  "total_cost_usd": 1.625619,
+  "usage": {
+    "input_tokens": 26,
+    "cache_creation_input_tokens": 40520,
+    "cache_read_input_tokens": 406636,
+    "output_tokens": 14266,
+    "output_tokens_details": {
+      "thinking_tokens": 9328
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 40520,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 3825,
+        "cache_read_input_tokens": 49067,
+        "cache_creation_input_tokens": 1687,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1687
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 26,
+      "outputTokens": 14266,
+      "cacheReadInputTokens": 406636,
+      "cacheCreationInputTokens": 40520,
+      "webSearchRequests": 0,
+      "costUSD": 1.625619,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 9328,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 18,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: merge.** The fix is correct and minimal, and it comes with regression tests. No finding blocks it.\n\nThe PR was already merged on 2026-09-07 as `2b1c2a9f`. It is in local `HEAD`, and the touched files have not changed since.\n\nI did not run the tests, because `node_modules` is absent and installing it would modify files. The verdict rests on reading the code and on CI for `fca7cfd1`: lint, coverage and CodeQL are green. The one failed `semantic` run passed on rerun.\n\nThe diagnosis in the PR description is accurate. `useOutsideClick` returns early when `ref.current` is null. `MenuContent` mounts before Radix mounts the menu content. The ref and the memoized callback never change, so the effect never reran and the listeners never attached. The callback-ref state now produces a new `menuRef` when the node appears, which reruns the effect. `setMenuNode` is stable, so Radix's ref composition does not churn. Listeners are removed when the menu content unmounts.\n\n## Findings, by severity\n\n1. **Medium: the root cause stays in the hook.**\n   - Location: `packages/excalidraw/hooks/useOutsideClick.ts:27`, and the workaround at `packages/excalidraw/components/dropdownMenu/DropdownMenuContent.tsx:41`.\n   - Cause: the hook silently does nothing for any node that mounts after the first effect run when the caller memoizes the callback. The PR patches one consumer with a fake ref object built by `useMemo`. `EyeDropper.tsx:258` has the same late-mount pattern and works only because its callbacks are not memoized, so its effect reruns every render. Memoizing them would bring the bug back there. `Sidebar.tsx:111` is safe because its ref mounts in the same commit.\n   - Fix: make `useOutsideClick` take the node (`T | null`) and list it in the effect dependencies, then drop the `useMemo` ref. Alternatively, use Radix `Content` props `onPointerDownOutside` and `onEscapeKeyDown`, which already resolve the owner document. Do this as a follow-up.\n\n2. **Low: the owner-document path has no test.**\n   - Location: `packages/excalidraw/components/dropdownMenu/DropdownMenu.test.tsx:29-58`, covering the code at `DropdownMenuContent.tsx:80-81`.\n   - Cause: every test renders into the global `document`. There, `menuNode.ownerDocument` equals `document`, so the Escape rebinding behaves the same as the old code. Nothing covers the #11974 case that motivated it.\n   - Fix: add a test that renders `<Excalidraw>` into an iframe document and asserts that Escape and outside pointerdown on that document close the menu.\n\n3. **Low: a test failure does not say which case broke.**\n   - Location: `DropdownMenu.test.tsx:40-41`.\n   - Cause: the target and event loops are nested inside one `it.each` case, so a failure does not name the target and event combination.\n   - Fix: move the target and the event into the `it.each` table.\n\n4. **Nit: the test clicks the wrong canvas.**\n   - Location: `DropdownMenu.test.tsx:37`.\n   - Cause: `container.querySelector(\"canvas\")` picks the first canvas, which should be the static one (not checked). Real pointer events land on the interactive canvas, and `App.handleCanvasPointerDown` does not run for the static one.\n   - Fix: select `canvas.interactive`.\n\n5. **Nit: extra render on open and close.**\n   - Location: `DropdownMenuContent.tsx:38`.\n   - Cause: the state update inside the ref callback makes `MenuContent` and its children render a second time on mount, and once more on unmount. The cost is negligible for the main menu.\n   - Fix: none required. The second render on open is inherent to the callback-ref approach and would remain after the change in finding 1.\n\nGating the Escape listener on `menuNode` (`DropdownMenuContent.tsx:63`) is not a problem. The state update in the ref callback flushes synchronously during commit, so there is no window where Escape is unhandled. Trigger clicks are still excluded by the `closest(wrapper).contains(target)` guard.",
+  "ttft_ms": 14766,
+  "type": "result",
+  "duration_ms": 230839,
+  "uuid": "bc5f371a-1d3e-4303-ac84-91f46bcbb065",
+  "ttft_stream_ms": 13901,
+  "time_to_request_ms": 12763,
+  "first_content_frame_ms": 13902,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "caveman-lite",
+    "prompt": "review-pr-12053",
+    "wall_s": 249,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "lite",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

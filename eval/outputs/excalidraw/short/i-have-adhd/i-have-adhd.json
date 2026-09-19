@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 34865,
+  "stop_reason": "end_turn",
+  "session_id": "6634015f-1c59-4c41-8e12-28c89edf6442",
+  "total_cost_usd": 0.540325,
+  "usage": {
+    "input_tokens": 14,
+    "cache_creation_input_tokens": 19211,
+    "cache_read_input_tokens": 155860,
+    "output_tokens": 2340,
+    "output_tokens_details": {
+      "thinking_tokens": 370
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 19211,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 934,
+        "cache_read_input_tokens": 28960,
+        "cache_creation_input_tokens": 485,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 485
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 14,
+      "outputTokens": 2340,
+      "cacheReadInputTokens": 155860,
+      "cacheCreationInputTokens": 19211,
+      "webSearchRequests": 0,
+      "costUSD": 0.540325,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 370,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 7,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The allowlist is `ALLOWED_DOMAINS` in `packages/element/src/embeddable.ts:133`. It is the only place these domains are listed; there is no copy in a CSP header, the docs or the app config.\n\n## Adding a domain\n\n1. Add the bare hostname to `ALLOWED_DOMAINS` (`embeddable.ts:133`), without `www.` because the matcher strips it before comparing. To cover subdomains, use a wildcard entry like `\"*.simplepdf.eu\"`. The wildcard replaces the first subdomain label only.\n2. If the embed needs cookies or storage, such as a login or a player API, add the identical string to `ALLOW_SAME_ORIGIN` (`embeddable.ts:152`). This sets `allow-same-origin` on the iframe sandbox. Skip this for domains you trust less, as was done for `gist.github.com`, `giphy.com`, `val.town` and `link.excalidraw.com`.\n3. If the URL users paste is different from the URL that embeds, add a regex near the top of the file and a rewrite branch in `getEmbedLink` (`embeddable.ts:171`). This is optional. Figma (`:281`) and val.town (`:302`) are short examples. Without a branch, the link is used as pasted in a generic 560×840 frame.\n4. If the site hands out `<blockquote>` or `<script>` snippets rather than iframe URLs, add a case to `maybeParseEmbedSrc` (`embeddable.ts:474`). This is also optional. Generic `<iframe src=…>` snippets already work.\n5. Add a test in `packages/element/tests/embeddable.test.ts`. The Google Drive block at line 155 is the model to follow, including \"should validate … domain by default\" at `:225`.\n6. Run `yarn test:update` and `yarn test:typecheck`.\n\nSteps 1, 5 and 6 take about 10 minutes. Add 20–30 minutes if you need a URL rewrite.\n\n## Behavior that affects the change\n\n- `matchHostname` (`embeddable.ts:450`) always checks `ALLOWED_DOMAINS`, even when it is passed `ALLOW_SAME_ORIGIN`. So an entry in `ALLOW_SAME_ORIGIN` only takes effect if the same exact string is also in `ALLOWED_DOMAINS`.\n- If the host app passes the `validateEmbeddable` prop (`packages/excalidraw/types.ts:1001`) and it returns a boolean or is an array or regex, it overrides the allowlist (`embeddable.ts:502`). For a single host app, that prop is the way to allow a domain without editing the library.\n\nNext: open `packages/element/src/embeddable.ts:133` and add your hostname to the set.",
+  "ttft_ms": 13038,
+  "type": "result",
+  "duration_ms": 81813,
+  "uuid": "938dd61a-3e20-464b-8e6c-8aa60275596f",
+  "ttft_stream_ms": 12196,
+  "time_to_request_ms": 10625,
+  "first_content_frame_ms": 12196,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "i-have-adhd",
+    "prompt": "short",
+    "wall_s": 101,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": true
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

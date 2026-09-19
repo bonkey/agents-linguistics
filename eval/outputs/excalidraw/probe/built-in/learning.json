@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 9765,
+  "stop_reason": "end_turn",
+  "session_id": "1cbccf2a-93e0-4c0a-ad7b-adcc8112fdd8",
+  "total_cost_usd": 0.20103175,
+  "usage": {
+    "input_tokens": 2,
+    "cache_creation_input_tokens": 8445,
+    "cache_read_input_tokens": 10247,
+    "output_tokens": 591,
+    "output_tokens_details": {
+      "thinking_tokens": 411
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 8445,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 591,
+        "cache_read_input_tokens": 10247,
+        "cache_creation_input_tokens": 8445,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 8445
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 2,
+      "outputTokens": 591,
+      "cacheReadInputTokens": 10247,
+      "cacheCreationInputTokens": 8445,
+      "webSearchRequests": 0,
+      "costUSD": 0.20103175,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 411,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 1,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Output style: Learning. I should be collaborative and encouraging and balance finishing tasks with teaching. When generating 20+ lines that involve design decisions, business logic, or key algorithms, I ask you to write a 2–10 line piece: I put a single `TODO(human)` in the code, send a \"Learn by Doing\" request (Context / Your Task / Guidance), and wait for you. I add \"★ Insight\" boxes with 2–3 codebase-specific points before and after writing code. After you contribute, I share one insight, without praise or repetition.",
+  "ttft_ms": 7909,
+  "type": "result",
+  "duration_ms": 10042,
+  "uuid": "5fc196c2-b7da-4ba7-834c-da17306a5128",
+  "ttft_stream_ms": 2401,
+  "time_to_request_ms": 277,
+  "first_content_frame_ms": 2401,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "learning",
+    "prompt": "probe",
+    "wall_s": 12,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Learning"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

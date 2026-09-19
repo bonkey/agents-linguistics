@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 92692,
+  "stop_reason": "end_turn",
+  "session_id": "ff2bc0db-1d1c-40e6-b711-508efbd93666",
+  "total_cost_usd": 1.06257125,
+  "usage": {
+    "input_tokens": 24,
+    "cache_creation_input_tokens": 29065,
+    "cache_read_input_tokens": 333725,
+    "output_tokens": 7952,
+    "output_tokens_details": {
+      "thinking_tokens": 2327
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 29065,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1428,
+        "cache_read_input_tokens": 38631,
+        "cache_creation_input_tokens": 668,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 668
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 24,
+      "outputTokens": 7952,
+      "cacheReadInputTokens": 333725,
+      "cacheCreationInputTokens": 29065,
+      "webSearchRequests": 0,
+      "costUSD": 1.06257125,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 2327,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 17,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Investigation done. Verdict below.\n\n## Verdict: reject (close, redirect to Crowdin)\n\nDiff: 1 file, 4 lines, `packages/excalidraw/locales/si-LK.json`. JSON valid. Prettier not run (no `node_modules`).\n\n## Findings, by severity\n\n1. **Wrong channel. Crowdin overwrites edit.**\n   - Location: `packages/excalidraw/locales/si-LK.json` (whole diff); policy in `packages/excalidraw/locales/README.md`, `crowdin.yml`.\n   - Cause: README says \"Please do not contribute changes directly to these files\". All si-LK history = \"Update translations from Crowdin\". Next sync reverts PR.\n   - Fix: close PR. Fix strings on Crowdin.\n\n2. **Author does not speak Sinhala. Appended tokens produce nonsense.**\n   - Location: `si-LK.json:511` (`publishSuccessDialog.content`), `:566`, `:572`, `:285`.\n   - Cause: source strings are translations of key names, not of English text. `:511` reads \"Publish success content (Alice)\". `:566` renders \"... (selection toast, dark)\" because `toast.selection` = \"තේරීම ටෝස්ට්\". Placeholder parity passes, meaning stays wrong.\n   - Fix: native speaker retranslates full strings on Crowdin. Alternative: empty the strings so `t()` falls back to English (`i18n.ts:133`).\n\n3. **`<link>` tags still missing.**\n   - Location: `si-LK.json:511`; consumer `LibraryMenuHeaderContent.tsx:116`.\n   - Cause: en has `<link>here</link>`. PR adds only `{{authorName}}`. Status-tracking link never renders.\n   - Fix: include `<link>…</link>` in retranslation.\n\n4. **Incomplete. Same bug class remains in same file.**\n   - Location: `alerts.confirmAddLibrary` (`{{numShapes}}`), `errors.fileTooBig` (`{{maxSize}}`), `errorSplash.trackedToSentry` (`{{eventId}}`), `toast.fileSavedToFilename` (`{filename}`, single brace, used by `.replace` at `actionExport.tsx:297`). 12 more strings lack `<bold>`/`<link>`/`<button>`/`<br>` tags.\n   - Cause: PR scoped to #12115 list. Title claims \"restore dropped placeholders\". `{filename}` missed by both issue and PR (double-brace regex only).\n   - Fix: narrow title, or cover all via Crowdin.\n\n5. **Zero runtime impact. Locale unreachable.**\n   - Location: `packages/excalidraw/i18n.ts:21-75`, `percentages.json:46`, `App.tsx:14124`.\n   - Cause: `si-LK` absent from `languages` array. Completion 65 < `COMPLETION_THRESHOLD` 85. `langCode=\"si-LK\"` falls back to `defaultLang`. File never loads. \"Silently lost values\" claim not reproducible.\n   - Fix: none in code. Lowers urgency; supports closing.\n\n6. **No regression guard.**\n   - Location: PR adds no test. Referenced #12109 still open, exempts si-LK.\n   - Cause: nothing stops recurrence after next Crowdin sync.\n   - Fix: land parity test (#12109) first. Extend regex to single-brace `{x}` and `<tag>` pairs.\n\n7. **Minor: en line break dropped.**\n   - Location: `si-LK.json:566`.\n   - Cause: en has `\\n` before `({{exportColorScheme}})`. PR joins both tokens in one parenthetical.\n   - Fix: mirror en structure in retranslation.\n\nNo file modified.",
+  "ttft_ms": 13852,
+  "type": "result",
+  "duration_ms": 145689,
+  "uuid": "17c0468b-3024-421d-b145-31c96256a85f",
+  "ttft_stream_ms": 12904,
+  "time_to_request_ms": 11250,
+  "first_content_frame_ms": 12904,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "caveman-ultra",
+    "prompt": "review-pr-12116",
+    "wall_s": 163,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "ultra",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 126954,
+  "stop_reason": "end_turn",
+  "session_id": "d2167b85-ad5c-4932-a6ab-2f8f9c4c9a34",
+  "total_cost_usd": 1.18934175,
+  "usage": {
+    "input_tokens": 18,
+    "cache_creation_input_tokens": 29099,
+    "cache_read_input_tokens": 250927,
+    "output_tokens": 10889,
+    "output_tokens_details": {
+      "thinking_tokens": 4440
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 29099,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 5680,
+        "cache_read_input_tokens": 37689,
+        "cache_creation_input_tokens": 1657,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1657
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 18,
+      "outputTokens": 10889,
+      "cacheReadInputTokens": 250927,
+      "cacheCreationInputTokens": 29099,
+      "webSearchRequests": 0,
+      "costUSD": 1.18934175,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 4440,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 17,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "I read the README as a first-time contributor and checked its claims against the repo. No files were modified. The README is a good landing page for someone installing the npm package, but it gives a contributor almost nothing: every contributor step is a link to the docs site, and that page has errors of its own.\n\n`★ Insight ─────────────────────────────────────`\n- The library vs. app split (`packages/excalidraw` vs. `excalidraw-app`) is the most useful thing for a contributor to know. CI enforces it through required PR-title scopes (`editor`, `app`, …), but the README only shows it as two feature lists.\n- Commands, ports and versions that live only on the docs site can't be checked against `package.json` in the same PR, so they go stale. That is how `localhost:3000` survived after `.env.development` moved the port to 3001.\n`─────────────────────────────────────────────────`\n\n## Missing\n\n1. **There is no local development path.**\n   - \"Quick start\" (`README.md:83`) is for npm users. The only contributor pointer is a bold note inside that section.\n   - `CONTRIBUTING.md` is a single line linking off-site.\n   - Clone, install, run, test and lint are not in the repo's own docs at all.\n2. **There is no repository layout.** Nothing says where a change should go, and that decides the PR scope (see 3).\n3. **PR title rules are missing, and CI enforces them.**\n   - `.github/workflows/semantic-pr-title.yml:32-39` sets `requireScope: true`.\n   - Allowed scopes are `app`, `editor`, `packages/excalidraw`, `packages/utils`, `docker` and `repo`.\n   - A first PR titled `fix: typo` fails the check. Neither the README nor the contributing guide mentions scopes.\n4. **There is no pre-PR checklist.**\n   - `.husky/pre-commit` has its only command commented out (`# yarn lint-staged`), so nothing formats or lints on commit.\n   - CI runs `test:other`, `test:code` and `test:typecheck` (`lint.yml:20-22`), and a contributor only finds out from a red check.\n5. **Tool versions are not stated.**\n   - `package.json` says Node `>=18` and pins `yarn@1.22.22`. CI uses Node 20.x and the Dockerfile uses `node:24`.\n   - There is no `.nvmrc`, and the README says nothing.\n6. **Minor gaps.** There is no License section (only a badge), no mention of `AGENTS.md` conventions, and no place to report a security issue.\n\n## Wrong\n\n1. **The Google Cloud link at `README.md:110` is dead.** `googlecloudcheatsheet.withgoogle.com/architecture` now redirects to the generic `cloud.google.com/products` page. I checked this with curl; the other README links I checked returned 200. CodeSandbox, which the README does not link, returned 403, likely bot-blocking.\n2. **\"circle\" at `README.md:66` is the wrong name.**\n   - The tool is `ellipse` (`packages/common/src/constants.ts:537`).\n   - The list is also stale. `TOOL_TYPE` now includes `text`, `frame`, `stickynote`, `embeddable`, `laser` and `lasso`.\n3. **Some of the HTML is invalid.**\n   - `</br>` at lines 17-18 is not a tag.\n   - `alt` on `<source>` at line 3 is not a valid attribute.\n   - GitHub renders both fine, so this is low priority.\n4. **Nits.**\n   - \"VScode\" should be \"VS Code\".\n   - \"following instructions\" should be \"the following instructions\".\n\n## Unclear\n\n1. **\"Quick start\" is ambiguous.**\n   - A contributor expects clone-and-run and gets `npm install`.\n   - It is also incomplete for integrators: it stops at install.\n   - `packages/excalidraw/README.md:19-42` says the CSS import and a parent with non-zero height are the two easy-to-miss requirements. The root README mentions neither.\n2. **\"Integrations\" (`README.md:103-106`) lists the npm package as an integration of itself.** It also sits next to \"Who's integrating Excalidraw\", which is confusing.\n3. **\"We'll be adding these features as drop-in plugins… in the future\" (`README.md:81`)** has no date and no link. Either link a tracking issue or drop the line.\n4. **The Contributing section is three off-site links.** It leaves out the guide's main rule, which is to open an issue first for major changes.\n\n## Errors in the linked docs (`dev-docs/docs/introduction/`)\n\nThe README sends contributors to these pages, so their errors reach every new contributor.\n\n- **`development.mdx:37` gives the wrong port.** It says `localhost:3000`; the real port is **3001** (`.env.development:30`, `vite.config.mts:17`).\n- **`development.mdx:75-78` mislabels commands.**\n  - `yarn test:code` is labelled \"formatting with Prettier\", but it runs ESLint.\n  - The Prettier check is `yarn test:other`.\n  - `yarn fix` runs both, not just Prettier.\n- **`development.mdx:81-87` presents docker-compose as a way to work locally.**\n  - The Dockerfile builds a static bundle served by nginx, so there is no hot reload.\n  - The bind mounts target `/opt/node_app/app`, which the nginx stage never reads.\n- **`development.mdx:16` says \"Yarn v1 or v2.4.2+\".** The repo pins `yarn@1.22.22`, and no Node version is given.\n- **`contributing.mdx:41-53` lists PR title types but not the required scopes.** Its examples (\"gulp, broccoli\", \"Travis, Circle\") are leftovers from the Angular convention.\n\n## Proposed edits\n\n**A. Rename the quick start and make it work.** This replaces `README.md:83-95`.\n\n````md\n## Using the npm package\n\n```bash\nnpm install react react-dom @excalidraw/excalidraw\n```\n\n```tsx\nimport { Excalidraw } from \"@excalidraw/excalidraw\";\nimport \"@excalidraw/excalidraw/index.css\"; // required\n\nexport default function App() {\n  // the parent must have a non-zero height\n  return <div style={{ height: \"100vh\" }}><Excalidraw /></div>;\n}\n```\n\nSee the [documentation](https://docs.excalidraw.com/docs/@excalidraw/excalidraw/installation) for Next.js/SSR and the full API.\n````\n\n**B. Add a new section before \"Contributing\".**\n\n````md\n## Developing locally\n\nRequires Node.js ≥ 18 (CI uses 20.x) and Yarn 1.x (`corepack enable` picks up the pinned version).\n\n```bash\ngit clone https://github.com/excalidraw/excalidraw.git && cd excalidraw\nyarn          # installs all workspaces\nyarn start    # dev server at http://localhost:3001\n```\n\n| Path | Contents | PR scope |\n| --- | --- | --- |\n| `packages/excalidraw/` | The editor, published as `@excalidraw/excalidraw` | `editor` |\n| `packages/{common,element,math,utils}/` | Internal packages the editor is built from | `editor` / `packages/utils` |\n| `excalidraw-app/` | excalidraw.com (collaboration, sharing, PWA) | `app` |\n| `examples/`, `dev-docs/` | Integration examples; source of docs.excalidraw.com | `repo` |\n\nBefore opening a PR (there is no pre-commit hook, and CI runs all of these):\n\n```bash\nyarn fix             # Prettier + ESLint autofix\nyarn test:typecheck  # tsc\nyarn test:update     # run tests once, updating snapshots\n```\n\nPR titles must be `type(scope): summary`, e.g. `fix(editor): …`. The scope is **required**: `app`, `editor`, `packages/excalidraw`, `packages/utils`, `docker`, or `repo`.\n````\n\nIn the table above, the scope-to-path mapping for `examples/` and `dev-docs/` is my inference. The workflow lists the scopes but does not map them to directories, so a maintainer should confirm it.\n\n**C. Smaller fixes.**\n- Line 66: change `circle` to `ellipse` and add `text, frames, sticky notes, embeds, laser pointer`.\n- Line 110: remove the Google Cloud link or replace the URL.\n- Lines 17-18: change `</br>` to `<br />`. Line 3: drop `alt` from `<source>`.\n- Lines 103-106: fold the \"Integrations\" list into \"Who's integrating\", or rename it \"Official integrations\" and drop the npm entry.\n- Contributing: prepend \"For major changes, please open an issue first.\"\n- Append a `## License` line: \"MIT — see [LICENSE](./LICENSE)\".\n\n**D. Fix the four `development.mdx` errors and add the scope list to `contributing.mdx`.** Otherwise edit B and the docs site will contradict each other.\n\n`★ Insight ─────────────────────────────────────`\n- Part of the PR workflow already works from the title: the `label-scope` job (`semantic-pr-title.yml:45-114`) reads it and applies `s-app`, `s-editor` or `s-package` labels. Documenting scopes therefore also explains how PRs get triaged.\n- The commented-out husky hook means the README has to do the hook's job. The \"Before opening a PR\" block in edit B covers that, so first PRs don't spend a CI round-trip on formatting.\n`─────────────────────────────────────────────────`",
+  "ttft_ms": 15890,
+  "type": "result",
+  "duration_ms": 172762,
+  "uuid": "87190c5a-0e70-435c-87a7-08f479ce622b",
+  "ttft_stream_ms": 15884,
+  "time_to_request_ms": 12950,
+  "first_content_frame_ms": 15888,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "explanatory",
+    "prompt": "critique-readme",
+    "wall_s": 187,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Explanatory"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

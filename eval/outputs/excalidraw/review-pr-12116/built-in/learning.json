@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 156493,
+  "stop_reason": "end_turn",
+  "session_id": "8e4b9fde-5252-49e9-8baf-0069c2291448",
+  "total_cost_usd": 1.4270322500000001,
+  "usage": {
+    "input_tokens": 28,
+    "cache_creation_input_tokens": 34656,
+    "cache_read_input_tokens": 382329,
+    "output_tokens": 12761,
+    "output_tokens_details": {
+      "thinking_tokens": 3798
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 34656,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2655,
+        "cache_read_input_tokens": 43537,
+        "cache_creation_input_tokens": 1366,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 1366
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 28,
+      "outputTokens": 12761,
+      "cacheReadInputTokens": 382329,
+      "cacheCreationInputTokens": 34656,
+      "webSearchRequests": 0,
+      "costUSD": 1.4270322500000001,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 3798,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 24,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "# Review of PR #12116, \"fix(i18n): restore dropped placeholders in si-LK strings\"\n\n## Verdict: **Reject** (close the PR and move the fix to Crowdin)\n\nThe PR changes 4 lines in one JSON file, and it is syntactically valid. It should still not be merged, for three reasons:\n- It edits a file the repo says not to edit by hand.\n- The edit cannot reach any user.\n- The strings it patches are not real translations.\n\nI chose reject over request changes because no revision of this diff would be mergeable. The fix has to go through Crowdin. The author's bug-finding is good, and I'd say so when closing.\n\nThe PR has no CI check runs; only the Vercel preview deployed. I did not run `yarn test:update`, because a JSON-only change in an unregistered locale is not exercised by any test.\n\n---\n\n## Findings, most severe first\n\n### 1. The file is managed by Crowdin, so a direct edit will be overwritten\n- **Location:** `packages/excalidraw/locales/si-LK.json` (the whole diff). The policy is in `packages/excalidraw/locales/README.md:3` and `crowdin.yml`.\n- **Cause:**\n  - The README says: \"Please do not contribute changes directly to these files, as we manage them with Crowdin.\"\n  - Every previous commit to this file is an Excalidraw Bot Crowdin sync.\n  - `origin/l10n_master` still has all four strings without placeholders, so the next sync PR reverts this change.\n- **Fix:** Close the PR and correct the four strings in Crowdin's si-LK project. Crowdin's placeholder QA check can enforce this at the source.\n\n### 2. The change has no runtime effect because si-LK cannot be loaded\n- **Location:** `packages/excalidraw/i18n.ts:69-73` and `packages/excalidraw/components/InitializeApp.tsx:26`\n- **Cause:**\n  - `si-LK` appears zero times in `i18n.ts`, so it is not in the `languages` array. It is one of 12 locale files with no registration.\n  - It is 65% complete, below `COMPLETION_THRESHOLD = 85`.\n  - `InitializeApp` resolves `languages.find(code) || defaultLang`, so a host app passing `langCode=\"si-LK\"` gets English.\n  - The PR description says values are being \"silently lost\", but no user sees them.\n- **Fix:** Nothing is needed in code. This is why the issue is not urgent and can go through Crowdin.\n\n### 3. The patched strings are translations of the key names, not of the English text\n- **Location:** `si-LK.json:285, 511, 566, 572` at the PR head\n- **Cause:**\n  - `publishSuccessDialog.content` now reads \"Publish success content ({{authorName}})\". The base string is the key name rendered in Sinhala.\n  - The same pattern runs through the file. `errorSplash.headingMain` reads \"Main error\", and `publishDialog.noteDescription` reads \"Note description\".\n  - Adding a token to such a string makes a placeholder parity check pass while the text is still wrong.\n  - The author says they don't speak Sinhala and appended the tokens in parentheses.\n- **Fix:** Have these strings retranslated from the English values in Crowdin, or blanked. An empty string falls back to English at `i18n.ts:141-142`, which is better than the current text.\n\n### 4. A line the PR touches is still broken: the `<link>` tag is missing\n- **Location:** `si-LK.json:511`, used at `packages/excalidraw/components/LibraryMenuHeaderContent.tsx:116-128`\n- **Cause:**\n  - The English string is `…track the status <link>here</link>`.\n  - `Trans` only calls the `link` render prop when the tag is present in the string.\n  - Without the tag, the dialog never shows the URL of the submitted library, and that link is the purpose of the dialog. This is a worse omission than the missing author name.\n- **Fix:** Restore `<link>…</link>` around the relevant words in the Crowdin translation.\n\n### 5. The fix is incomplete relative to its title\n- **Location:** `si-LK.json:569` (`toast.fileSavedToFilename`), plus 12 other keys\n- **Cause:**\n  - My parity audit found 17 mismatched keys at the PR head, not 4.\n  - `fileSavedToFilename` uses the single-brace `{filename}` form, which a `{{…}}`-only regex does not match.\n  - That key is substituted with a raw `.replace(\"{filename}\", …)` at `actions/actionExport.tsx:297`, so the missing token drops the filename.\n  - Still missing: `{{numShapes}}`, `{{maxSize}}`, `{{eventId}}`, and 11 strings with tags (`<bold>`, `<link>`, `<button>`, `<issueLink>`, `<discordLink>`, `<br>`).\n- **Fix:** Apply the same Crowdin pass as in finding 3. Any future parity test should match `{{x}}`, `{x}` and `<tag>`.\n\n### 6. The restored placeholders would interpolate bad values\n- **Location:** `si-LK.json:566`, with values from `si-LK.json:570-571`, called at `actions/actionClipboard.tsx:224-231`\n- **Cause:**\n  - `{{exportSelection}}` is filled from `toast.canvas` or `toast.selection`.\n  - In si-LK those read \"Canvas toast\" and \"Selection toast\", which are also key-name translations.\n  - The resulting toast would read \"Copied to clipboard as PNG (Canvas toast, Dark mode)\".\n- **Fix:** Fix `toast.canvas` and `toast.selection` in the same Crowdin pass.\n\n### 7. Minor: the PR description is inaccurate\n- **Location:** PR body and issue #12115\n- **Cause:**\n  - The \"parity test that exempts si-LK\" is in #12109, which is still open. No such test exists in this tree; I searched for one.\n  - The issue title says \"5 more drops\" but lists 4 keys.\n- **Fix:** Reword these when the issue is refiled. The test-coverage suggestion belongs as a review comment on #12109.\n\n---\n\n`★ Insight ─────────────────────────────────────`\n- **Two interpolation paths behave differently.** `t()` uses `String.replace`, which does nothing if the token is absent. `Trans` splits on a regex, and a tag's render prop is only called when the tag is present. A missing `{{var}}` drops one value, while a missing `<link>` removes an interactive element. That is why finding 4 ranks above the placeholder the PR did restore.\n- **An empty string is better than a wrong one.** The `||` chain at `i18n.ts:141` treats `\"\"` as missing and falls back to English. The 211 empty si-LK strings are therefore harmless, and a key-name translation is the worst case because it blocks that fallback.\n- **The gate is two layers.** A locale needs a `languages` entry and at least 85% in `percentages.json`. Checking reachability first (finding 2) would have shown that this whole class of bug is cosmetic for now.\n`─────────────────────────────────────────────────`\n\n## Suggested closing note\n- Thank the author; the parity-diff approach in #12115 is useful.\n- Point to `locales/README.md` and Crowdin as the place for the fix.\n- Keep #12115 open and relabel it as a Crowdin data-quality issue covering all 17 keys and the key-name translations.\n- Move the test-coverage suggestion to #12109.\n\n**Housekeeping:** I did not modify any tracked files, and the worktree is clean. I created a local ref, `pr-12116`, to read the diff. It will help if you want to check these findings; otherwise remove it with `git branch -D pr-12116`. `gh` was not authenticated, so the PR metadata came from the public GitHub REST API.",
+  "ttft_ms": 17240,
+  "type": "result",
+  "duration_ms": 209267,
+  "uuid": "574aab1d-6587-48ff-903e-c8445fee34c0",
+  "ttft_stream_ms": 15781,
+  "time_to_request_ms": 12856,
+  "first_content_frame_ms": 15782,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "learning",
+    "prompt": "review-pr-12116",
+    "wall_s": 225,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Learning"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

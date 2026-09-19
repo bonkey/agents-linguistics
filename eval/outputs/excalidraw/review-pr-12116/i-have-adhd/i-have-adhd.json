@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 282153,
+  "stop_reason": "end_turn",
+  "session_id": "08685eb8-3dcf-49f4-8394-75fdaee00803",
+  "total_cost_usd": 2.3618770000000002,
+  "usage": {
+    "input_tokens": 26,
+    "cache_creation_input_tokens": 31377,
+    "cache_read_input_tokens": 372978,
+    "output_tokens": 8695,
+    "output_tokens_details": {
+      "thinking_tokens": 2709
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 31377,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2086,
+        "cache_read_input_tokens": 38671,
+        "cache_creation_input_tokens": 2940,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 2940
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 62,
+      "outputTokens": 23133,
+      "cacheReadInputTokens": 791468,
+      "cacheCreationInputTokens": 61713,
+      "webSearchRequests": 0,
+      "costUSD": 2.3618770000000002,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 8619,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 16,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "**Verdict: reject.** Close #12116 and fix the four strings in [Crowdin](https://crowdin.com/translate/excalidraw/10). The edit would be overwritten by the next Crowdin sync, and si-LK is never loaded at runtime. No files were modified.\n\nI got the diff from the local `pr-12116` branch (1 commit, `si-LK.json`, +4/−4) and the PR and issue text from the public API. I checked every finding below against source.\n\n## Blocking\n\n1. **Manual edit to a Crowdin-generated file**\n   - Location: `packages/excalidraw/locales/si-LK.json` (whole diff), `packages/excalidraw/locales/README.md:3`, `crowdin.yml`\n   - Cause: The README says not to edit these files directly because Crowdin manages them. `origin/l10n_master` (4051fc9f, 2026-09-14) still holds the four old strings, so the next \"Update translations from Crowdin\" PR reverts this change. The strings first appeared in Crowdin sync #7429 (d1f39823).\n   - Fix: Close the PR and correct the strings in Crowdin.\n\n2. **No user-visible effect**\n   - Location: `packages/excalidraw/i18n.ts:20-74`, `packages/excalidraw/locales/percentages.json:46`\n   - Cause: `si-LK` is not in the `languages` array. Its completion is 65, below `COMPLETION_THRESHOLD = 85`. `langCode=\"si-LK\"` resolves to English and `si-LK.json` is never imported.\n   - Fix: Nothing to ship. Audit the placeholders when the locale reaches 85% and is registered.\n\n## Defects in the four edited strings\n\n3. **`publishSuccessDialog.content` still lacks `<link>…</link>`**\n   - Location: `si-LK.json:511`\n   - Cause: Only `{{…}}` tokens were checked. en.json:519 has `<link>here</link>`. `Trans` (`LibraryMenuHeaderContent.tsx:117`) calls the `link` prop only when the tag is in the string, so the link to the submission never renders.\n   - Fix: Add the tag pair around a translated \"here\", or set the value to `\"\"`.\n\n4. **Tokens appended to key-name pseudo-translations**\n   - Location: `si-LK.json:285`, `511`, `566`, `572`\n   - Cause: The existing values translate the key names, not the English source. Line 511 renders as \"Publish success content (Alice)\". Line 572 reads \"Pasting as a single element (Ctrl+Shift+V)\", but `App.tsx:5130` shows this toast after the paste was split into several elements, and it drops the \"or paste into an existing text editor\" half. The author states they do not speak Sinhala.\n   - Fix: Set all four to `\"\"`. `t()` then falls back to en.json through the `||` chain at `i18n.ts:141-143`. Otherwise get a real translation through Crowdin.\n\n5. **`{{exportSelection}}` is filled from nonsense values**\n   - Location: `si-LK.json:566`, fed by `si-LK.json:570-571`\n   - Cause: `actionClipboard.tsx:224` interpolates `toast.canvas` and `toast.selection`. Their si-LK values mean \"canvas toast\" and \"selection toast\". The PNG toast becomes \"Copied to clipboard as PNG (selection toast, dark mode)\".\n   - Fix: Correct or blank lines 570-571 in the same change.\n\n## Incomplete: 17 placeholder or tag mismatches remain after this PR\n\nA parity script run against the PR branch still finds these; they predate the PR, and the issue says three more are already tracked in #12097.\n\n6. **Missing value placeholders**\n   - Location:\n     - `si-LK.json:280` `alerts.confirmAddLibrary` lacks `{{numShapes}}`\n     - `:293` `errors.fileTooBig` lacks `{{maxSize}}`\n     - `:410` `errorSplash.trackedToSentry` lacks `{{eventId}}`\n     - `:569` `toast.fileSavedToFilename` lacks the single-brace `{filename}`\n   - Cause: Same key-name translations as above. Line 569 was missed because only `{{…}}` was audited; `actionExport.tsx:297` uses `.replace(\"{filename}\", …)`, so the filename never shows.\n   - Fix: Same as finding 4.\n\n7. **Missing render tags**\n   - Location:\n     - `si-LK.json:407`, `408`, `411`: `errorSplash.headingMain`, `clearCanvasMessage` and `openIssueMessage` lack `<button>`\n     - `:502-504`: `publishDialog.noteDescription`, `noteGuidelines` and `noteLicense` lack `<link>`\n     - `:303-306`: `errors.brave_measure_text_error.line1-4` lack `<bold>`, `<link>`, `<issueLink>` and `<discordLink>`\n     - `:643`, `648`: the `overwriteConfirm.modal` descriptions for `loadFromFile` and `shareableLink` lack `<bold>` and `<br>`\n   - Cause: `Trans` never calls render props whose tags are absent from the string. The crash screen (`TopErrorBoundary.tsx`) would have no reload, clear-canvas or bug-report buttons. The overwrite modal also loses its data-loss warning.\n   - Fix: Same as finding 4.\n\n## Process gap\n\n8. **No check compares locale placeholders against en.json**\n   - Location: no parity test exists on master. The one proposed in open PR #12109 exempts si-LK, as this PR's description notes.\n   - Cause: Placeholder and tag drift cannot fail CI.\n   - Fix: In #12109, cover `<tag>` and `{single}` tokens as well as `{{…}}`. Remove the si-LK exemption once the strings are blanked or fixed.\n\nNext: post the close comment on #12116 pointing the author to Crowdin, and suggest blanking the 21 mismatched strings to `\"\"` there (the four in this PR plus the 17 in findings 6 and 7) — about two minutes.",
+  "ttft_ms": 13939,
+  "type": "result",
+  "duration_ms": 344852,
+  "uuid": "47c1d622-3fda-4dec-9579-8b9cc39349ef",
+  "ttft_stream_ms": 9485,
+  "time_to_request_ms": 8339,
+  "first_content_frame_ms": 9486,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "i-have-adhd",
+    "prompt": "review-pr-12116",
+    "wall_s": 368,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": true
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

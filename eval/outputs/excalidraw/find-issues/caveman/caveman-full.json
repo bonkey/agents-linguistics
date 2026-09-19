@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 349080,
+  "stop_reason": "end_turn",
+  "session_id": "251fddf9-0e79-4b88-9082-2ed563c46918",
+  "total_cost_usd": 3.21060175,
+  "usage": {
+    "input_tokens": 38,
+    "cache_creation_input_tokens": 79841,
+    "cache_read_input_tokens": 1163007,
+    "output_tokens": 26453,
+    "output_tokens_details": {
+      "thinking_tokens": 16838
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 79841,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 3895,
+        "cache_read_input_tokens": 86840,
+        "cache_creation_input_tokens": 3235,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 3235
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 38,
+      "outputTokens": 26453,
+      "cacheReadInputTokens": 1163007,
+      "cacheCreationInputTokens": 79841,
+      "webSearchRequests": 0,
+      "costUSD": 3.21060175,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 16838,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 27,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "I found 16 issues, listed most severe first. Nothing was run and no file was changed; every finding comes from reading the code.\n\n## High\n\n**1. Cut deletes elements even when copy fails**\n- Location: `packages/excalidraw/actions/actionClipboard.tsx:117-120`, `packages/excalidraw/actions/manager.tsx:141-146`\n- Cause: `actionCut` calls async `actionCopy.perform` without `await` and discards its result, including `errorMessage`. It then deletes the selection unconditionally.\n- Cause, keyboard path: `keyTest` matches Ctrl+X on keydown and runs `perform` with `event = null`. The keydown `preventDefault()` most likely suppresses the native `cut` event (browser behaviour, not tested here). The copy then goes through `navigator.clipboard.writeText`.\n- Effect: a failed write still deletes the elements and shows no error. That path also writes `text/plain` only, with no custom MIME type.\n- Fix: make `perform` async and `await` the copy. Skip the delete and surface `errorMessage` when the copy fails. Drop `keyTest` so the `cut` event is handled by `onCut`, the same way copy works.\n\n**2. Pasted `files` from clipboard JSON are never validated**\n- Location: `packages/excalidraw/clipboard.ts:539-551`, `packages/excalidraw/components/App.tsx:4918` and `:5326-5342`, `packages/element/src/image.ts:30`\n- Cause: `parseClipboard` accepts any `text/plain` JSON with a matching `type`. Elements go through `restoreElements`, but `files` go into `this.files` unchecked. `dataURL` is assigned directly to `image.src`.\n- Effect: a payload with `dataURL: \"https://host/x.png\"` makes the browser request that URL on paste. The canvas then becomes tainted, so `toBlob` throws and PNG export and copy-as-PNG break for the scene.\n- Effect: `files: [null]` throws at `fileData.id`, and `files: \"abc\"` adds junk entries.\n- Fix: validate each file entry. Require `dataURL` to start with `data:`, require an allowed `mimeType`, and require a string `id` that matches the key. Drop invalid entries.\n\n## Medium\n\n**3. Mixed-content paste loses the text when image fetch fails**\n- Location: `App.tsx:4977-5008`, `clipboard.ts:532-536`\n- Cause: if the HTML has any `<img>`, only images are pasted. `parseClipboard` returns `{ mixedContent }` only, so `text/plain` is dropped. Cross-origin `fetch` often fails on CORS.\n- Effect: `insertImages([])` runs with an empty list and the user gets an error dialog. The copied text is gone.\n- Fix: when no image resolves, fall back to the text nodes. Keep `text` next to `mixedContent` in `ClipboardData`.\n\n**4. Paste pipeline has no error boundary**\n- Location: `App.tsx:4760-4815`, `:4687`, `:4825`; `packages/excalidraw/data/restore.ts:970`; `packages/element/src/transform.ts:585`\n- Cause: `insertClipboardContent` is not wrapped in try/catch.\n  - `elements: [null]` throws in `restoreElements` (`element.type`) and in `convertToExcalidrawElements` (`element.id`).\n  - `await import(\"@excalidraw/mermaid-to-excalidraw\")` sits outside its `try`, so a chunk load failure skips the text fallback.\n  - A throw in `addMissingFiles` lands after `replaceAllElements` but before `scheduleCapture`, so elements are inserted with no undo entry.\n- Effect: unhandled promise rejection and a silent paste failure.\n- Fix: wrap the pipeline in try/catch and set `errorMessage`. Move the `import()` inside the `try`. Filter out non-object elements before restore. Call `addMissingFiles` before mutating the scene.\n\n**5. `readSystemClipboard` fallback logic is wrong**\n- Location: `clipboard.ts:262-295`\n- Cause: the `DataError` (\"clipboard probably empty\") check is on the inner `readText` error, and only when `navigator.clipboard.read` is missing. The outer `read()` `DataError` is never checked.\n- Effect: on an empty clipboard `readText()` returns `\"\"`, the original error is rethrown, and the user sees the `asyncPasteFailedOnRead` dialog.\n- Cause: if `navigator.clipboard` is undefined (insecure context), `clipboardItems` is `undefined` and `for...of` at line 295 throws `TypeError`.\n- Cause: both warn messages name the fallback direction backwards.\n- Fix: check `error.name === \"DataError\"` on the outer error first and return `{}`. Return `{}` on empty `readText`. Guard a missing `navigator.clipboard`. Correct the messages.\n\n**6. The `copyText` try/catch can never catch anything**\n- Location: `actionClipboard.tsx:264-268`\n- Cause: `copyTextToSystemClipboard` is async and not awaited, so the `catch` is unreachable.\n- Effect: a failed write becomes an unhandled rejection and no error is shown.\n- Fix: make `perform` async, `await` the call, and return `errorMessage` on failure.\n\n**7. Copy as SVG loses user activation in Safari**\n- Location: `packages/excalidraw/data/index.ts:156-158`\n- Cause: the clipboard write happens after `await svgPromise`. Safari requires the write in the same tick as the gesture (see the comment at `clipboard.ts:559-562`). The PNG path handles this and the SVG path does not. I did not test this in Safari.\n- Fix: use `navigator.clipboard.write([new ClipboardItem({ \"text/plain\": svgPromise.then(toBlob) })])`, with the current path as fallback.\n\n**8. Paste is silently dropped based on the last pointer position**\n- Location: `App.tsx:4776-4786`, `packages/excalidraw/components/App.viewport.ts:438`\n- Cause: the gate is `elementFromPoint(lastPosition) instanceof HTMLCanvasElement`. `lastPosition` starts at `(0, 0)` and only updates on document `pointermove`.\n- Effect: paste before the first mouse move, or after a last touch on the UI, is ignored with no feedback.\n- Effect: context-menu paste goes through the same gate. The position is that of the \"Paste\" menu item, not the right-click point, and a menu item overlapping a toolbar blocks the paste.\n- Fix: skip the gate for synthetic events from `actionPaste`. Fall back to `\"center\"` when the position is unset or not over the canvas. Store the context-menu open position and use it.\n\n## Low\n\n**9. The execCommand fallback steals focus**\n- Location: `clipboard.ts:640-680`\n- Cause: the textarea is appended to the global `document.body` and `select()` moves focus out of the editor container. Focus is never restored.\n- Effect: `isExcalidrawActive` becomes false, so later copy and paste are ignored until the user clicks the canvas. The code also targets the wrong document when the editor lives in a popup or iframe.\n- Fix: save and restore `activeElement`. Use the owner document.\n\n**10. Late `preventDefault()` and an unconditional tool reset**\n- Location: `App.tsx:4809-4813`\n- Cause: `event.preventDefault()` runs after awaits, so it does nothing. `setActiveTool` runs even when nothing was pasted.\n- Effect: an empty or failed paste still resets the active tool.\n- Fix: call `preventDefault()` synchronously, after the gates. Reset the tool only after a successful insert.\n\n**11. Frame-strip branch in `serializeAsClipboardJSON` is dead code**\n- Location: `clipboard.ts:150`, `:176-185`\n- Cause: `elementsMap` holds only the copied elements. `getContainingFrame` therefore returns a frame only if that frame was copied, so the condition is never true.\n- Effect: a dangling `frameId` ships in the payload. The in-app paste path masks it, because `bindElementsToFramesAfterDuplication` nulls it at `packages/element/src/frame.ts:68`. Host `onPaste` handlers and external consumers still receive it.\n- Fix: test `element.frameId` against the set of copied frame ids.\n\n**12. `getFiles()` type guard returns every file as an image**\n- Location: `clipboard.ts:436-442`\n- Cause: the guard returns every `kind === \"file\"` item typed as an image file.\n- Effect: a pasted `.excalidraw`, `.excalidrawlib`, PDF or similar file gives an \"unsupported file type\" error. A non-image file also blocks the mixed-content branch (`App.tsx:4613`) while `data.text` is undefined.\n- Fix: filter with `isSupportedImageFileType`. Route scene and library files to the loader, as the drop handler does.\n\n**13. `parseHTMLTree` filtering is loose and fetches are unbounded**\n- Location: `clipboard.ts:213-231`, `packages/excalidraw/data/blob.ts:428`\n- Cause: `startsWith(\"http\")` accepts non-HTTP schemes, and `data:` images are dropped. Body `<style>` and `<script>` text becomes paste text.\n- Cause: there is no cap on image count, response size or timeout, so one `fetch` runs per `<img>` in parallel.\n- Fix: parse with `new URL` and allow `http:`, `https:` and `data:image/`. Skip `STYLE` and `SCRIPT` nodes. Cap the image count and add an `AbortController` timeout.\n\n**14. Paste inside the text editor can insert raw JSON**\n- Location: `packages/excalidraw/wysiwyg/textWysiwyg.tsx:571-602`\n- Cause: the element check relies on the custom MIME type only. Context-menu copy, keyboard cut (finding 1) and cross-browser copy write `text/plain` only.\n- Effect: the raw JSON is inserted into the text. When the custom MIME type is present but the JSON yields no elements, the paste is swallowed after `preventDefault()`.\n- Fix: also check `text/plain` with `clipboardContainsElements`. Fall through to a plain-text insert when there are no elements.\n\n**15. `actionPaste` error handling**\n- Location: `actionClipboard.tsx:64-79`\n- Cause: `NotAllowedError` is always swallowed. A Firefox read failure shows the write hint `hints.firefox_clipboard_write`.\n- Effect: with clipboard permission permanently denied, the menu item does nothing and shows no message.\n- Fix: check `navigator.permissions` and show guidance when the state is `denied`. Use a read-specific message.\n\n**16. Minor**\n- `clipboard.ts:108-109`: `createPasteEvent` pushes into the caller's `files` array. Copy the array first.\n- `clipboard.ts:62-72`: the support flags read `navigator` and `window` at import time. That throws `ReferenceError` under SSR on Node < 21. Add `typeof` guards.\n\nI checked whether cut or paste could fire in view mode. Both listeners are registered only in edit mode (`App.tsx:4191-4216`), so that is not an issue.",
+  "ttft_ms": 16022,
+  "type": "result",
+  "duration_ms": 388273,
+  "uuid": "601a7165-eb4e-446f-96c6-ecdf1f732d25",
+  "ttft_stream_ms": 15035,
+  "time_to_request_ms": 11885,
+  "first_content_frame_ms": 15044,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "caveman-full",
+    "prompt": "find-issues",
+    "wall_s": 407,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "full",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

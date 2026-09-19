@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 38591,
+  "stop_reason": "end_turn",
+  "session_id": "842e3d7f-ade7-4c03-821c-794ad05ef8da",
+  "total_cost_usd": 0.5561929999999999,
+  "usage": {
+    "input_tokens": 12,
+    "cache_creation_input_tokens": 19393,
+    "cache_read_input_tokens": 124452,
+    "output_tokens": 2742,
+    "output_tokens_details": {
+      "thinking_tokens": 153
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 19393,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1604,
+        "cache_read_input_tokens": 29111,
+        "cache_creation_input_tokens": 529,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 529
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 12,
+      "outputTokens": 2742,
+      "cacheReadInputTokens": 124452,
+      "cacheCreationInputTokens": 19393,
+      "webSearchRequests": 0,
+      "costUSD": 0.5561929999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 153,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 7,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The allowlist is in `packages/element/src/embeddable.ts`. I found no second copy anywhere else in the repo (no CSP config or app-level list).\n\n## Where it lives\n\nThere are two `Set`s:\n\n- **`ALLOWED_DOMAINS`** (`packages/element/src/embeddable.ts:133`) lists the hostnames that may be embedded by default.\n- **`ALLOW_SAME_ORIGIN`** (`packages/element/src/embeddable.ts:152`) lists the subset whose iframe gets `allow-same-origin` added to its `sandbox` attribute. That attribute is set in `packages/excalidraw/components/App.tsx:2096`.\n\nThe check itself is `embeddableURLValidator` (`embeddable.ts:502`). `App.tsx` calls it when you paste a link (`:4720`, `:13305`) and when embeddables render (`:1805`).\n\n## What adding a domain involves\n\n1. **Add the bare hostname to `ALLOWED_DOMAINS`.**\n   - Leave off `www.`, because `matchHostname` (`embeddable.ts:439`) strips it before looking up.\n   - Subdomains need their own entries, which is why `player.vimeo.com` is listed next to `vimeo.com`.\n   - Alternatively, use a wildcard entry such as `*.simplepdf.eu`. The wildcard replaces only the first label, so it matches `foo.simplepdf.eu` but not `simplepdf.eu` or `a.b.simplepdf.eu`.\n\n2. **Decide whether the domain also goes in `ALLOW_SAME_ORIGIN`.**\n   - This is a security decision. With `allow-same-origin` the embedded page keeps its own origin, so it can use its cookies and storage. Many players and login-dependent embeds need that.\n   - `gist.github.com`, `val.town`, `giphy.com` and `link.excalidraw.com` are left out of it on purpose.\n\n3. **Optionally add URL rewriting in `getEmbedLink` (`embeddable.ts:171`).**\n   - Do this when the URL people share differs from the URL that can be embedded. Add a `RE_*` regex and a branch that rewrites the link.\n   - The branch also sets `type` (`\"video\"`, `\"generic\"` or `\"document\"`) and the `intrinsicSize` aspect ratio.\n   - Existing examples: YouTube `watch?v=` becomes `/embed/`, and Figma links are wrapped in `figma.com/embed?...`. Twitter, Reddit and Gist links build a `srcdoc` instead.\n   - If you skip this step, the link is used as-is with a 560×840 generic frame.\n   - If people paste `<iframe>` or `<blockquote>` snippets rather than URLs, check `maybeParseEmbedSrc` (`:474`) as well.\n\n4. **Add tests in `packages/element/tests/embeddable.test.ts`.**\n   - The Google Drive block (`:155`–`:225`) is a good model. It covers both the link rewriting and \"should validate … domain by default\".\n   - Then run `yarn test:update` and `yarn test:typecheck`, as CLAUDE.md asks.\n\n`★ Insight ─────────────────────────────────────`\n- **`matchHostname` has a quirk.** When it is passed a `Set`, it ignores that argument and checks `ALLOWED_DOMAINS` directly (`:450`, `:458`). So `matchHostname(link, ALLOW_SAME_ORIGIN)` actually returns the match from `ALLOWED_DOMAINS`, and the outer `ALLOW_SAME_ORIGIN.has(...)` does the real filtering. This works only because `ALLOW_SAME_ORIGIN` is a strict subset. A domain added only to `ALLOW_SAME_ORIGIN` would do nothing.\n- **The allowlist is only a default.** Apps embedding Excalidraw can pass the `validateEmbeddable` prop (`packages/excalidraw/types.ts:1001`), which can be a boolean, a list of domain strings, a RegExp or list of RegExps, or a function. It takes precedence over the default list, except that a function returning `undefined` falls through to it. If you only need the domain in your own integration, use the prop rather than editing the library.\n- **Results are cached by the original link.** `embeddedLinkCache` stores each result under the pasted link. That is why the Vimeo branch leaves `error` out of the cached value, so the warning shows only once.\n`─────────────────────────────────────────────────`\n\nIf you have a specific domain in mind, tell me which one and I can wire it up. Whether it goes in `ALLOW_SAME_ORIGIN` is your decision, since that is the security trade-off.",
+  "ttft_ms": 12786,
+  "type": "result",
+  "duration_ms": 99569,
+  "uuid": "69a6626e-c297-48f9-9484-e68cc089b391",
+  "ttft_stream_ms": 11325,
+  "time_to_request_ms": 10000,
+  "first_content_frame_ms": 11325,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "learning",
+    "prompt": "short",
+    "wall_s": 119,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Learning"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

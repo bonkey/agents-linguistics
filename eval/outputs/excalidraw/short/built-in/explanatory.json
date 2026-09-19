@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 46895,
+  "stop_reason": "end_turn",
+  "session_id": "e9dc42b5-3640-4797-ade2-32ffe1199080",
+  "total_cost_usd": 0.5971489999999999,
+  "usage": {
+    "input_tokens": 14,
+    "cache_creation_input_tokens": 20056,
+    "cache_read_input_tokens": 146356,
+    "output_tokens": 3186,
+    "output_tokens_details": {
+      "thinking_tokens": 214
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 20056,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1763,
+        "cache_read_input_tokens": 29489,
+        "cache_creation_input_tokens": 814,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 814
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 14,
+      "outputTokens": 3186,
+      "cacheReadInputTokens": 146356,
+      "cacheCreationInputTokens": 20056,
+      "webSearchRequests": 0,
+      "costUSD": 0.5971489999999999,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 214,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 8,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The allowlist is the `ALLOWED_DOMAINS` set in `packages/element/src/embeddable.ts:133`. A second set, `ALLOW_SAME_ORIGIN` at `:152`, controls iframe sandboxing.\n\n## How the two sets work\n\n- **`ALLOWED_DOMAINS`** decides whether a URL can become an embeddable element at all. `embeddableURLValidator` (`:502`) checks it, but only when the host app's `validateEmbeddable` prop doesn't give an answer. If the prop returns `undefined` or isn't set, the check falls through to `matchHostname(url, ALLOWED_DOMAINS)`.\n- **`ALLOW_SAME_ORIGIN`** decides whether the iframe gets `allow-same-origin` in its `sandbox` attribute, which is set at `packages/excalidraw/components/App.tsx:2096`. It is a subset of the allowlist. For example, `gist.github.com`, `giphy.com`, `val.town` and `link.excalidraw.com` are allowed but do not get same-origin.\n\nEntries are bare hostnames:\n\n- `matchHostname` (`:439`) strips a leading `www.` before comparing.\n- An entry like `*.simplepdf.eu` wildcards only the first subdomain label, so `a.simplepdf.eu` matches and `a.b.simplepdf.eu` does not.\n\n## Adding a new domain\n\n1. **Add the bare hostname to `ALLOWED_DOMAINS`.** Leave off the protocol and `www.`. If pasted links can arrive on several hosts, add each one, as was done for `vimeo.com` and `player.vimeo.com`.\n\n2. **Decide whether it needs `ALLOW_SAME_ORIGIN`.**\n   - Add it only if the embed breaks without it, for example players that need cookies or storage.\n   - Most embeds that render through `srcDoc` stay off it. This matters because `allow-scripts` is always on, and scripts in a same-origin `srcDoc` frame would run with the host app's origin. Note that twitter and reddit are in the set today even though they use `srcDoc`.\n\n3. **Add URL rewriting in `getEmbedLink` (`:171`) if the share URL isn't the embeddable URL.** Existing examples:\n   - YouTube `watch?v=` becomes `/embed/`.\n   - Figma gets wrapped in `figma.com/embed?...`.\n   - MS Forms gets `embed=true` appended.\n   - Twitter, Reddit and Gist build a `srcdoc` with the provider's script.\n\n   This step usually means:\n   - Add a `RE_*` regex at the top of the file.\n   - Add a branch that sets `link`, `type` (`\"video\"`, `\"generic\"` or `\"document\"`) and `intrinsicSize`.\n   - Write the result to `embeddedLinkCache`.\n   - Pass any URL you interpolate into HTML through `escapeDoubleQuotes`.\n\n   If the raw URL already embeds fine, skip this step. The function's final branch passes it through as a generic 560×840 embed.\n\n4. **Add a case to `maybeParseEmbedSrc` (`:474`) if users paste embed snippets.** This only matters when `RE_GENERIC_EMBED` (`<iframe src=…>` or `<blockquote href=…>`) doesn't already pull out the right URL. Giphy has a custom case, for example.\n\n5. **Add tests in `packages/element/tests/embeddable.test.ts`.** The Google Drive block, including \"should validate Google Drive domain by default\", is a good template. Then run `yarn test:update` and `yarn test:typecheck`, as the project's CLAUDE.md asks.\n\n`★ Insight ─────────────────────────────────────`\n- **`matchHostname` always checks `ALLOWED_DOMAINS`.** When it is passed a `Set`, the body ignores the argument and reads `ALLOWED_DOMAINS.has(...)` (`:450`, `:458`). So `matchHostname(link, ALLOW_SAME_ORIGIN)` really matches against the allowlist. The result is still correct, because the outer `ALLOW_SAME_ORIGIN.has(...)` at `:184` filters the returned hostname. The catch is that a wildcard entry in `ALLOW_SAME_ORIGIN` only works if the identical string is also in `ALLOWED_DOMAINS`.\n- **`validateEmbeddable` is the better route for a single deployment.** If you need the domain in your own app rather than in upstream Excalidraw, pass the prop instead of editing the library. It accepts `true`, a hostname array, RegExp(s), or a function. A function that returns `undefined` defers to the built-in allowlist, so you can extend the defaults without replacing them. Passing an array replaces the defaults entirely, because that branch ends in `return false`.\n- **`embeddedLinkCache` is a module-level `Map` with no eviction, keyed by the original link.** Rewriting logic runs once per distinct URL per session. This is also why the Vimeo branch deliberately leaves `error` out of the cached value, so the warning shows only once.\n`─────────────────────────────────────────────────`",
+  "ttft_ms": 13423,
+  "type": "result",
+  "duration_ms": 93705,
+  "uuid": "479f4d8c-65ca-4dd6-9498-def30deb47a7",
+  "ttft_stream_ms": 12221,
+  "time_to_request_ms": 9783,
+  "first_content_frame_ms": 12260,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "explanatory",
+    "prompt": "short",
+    "wall_s": 109,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Explanatory"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

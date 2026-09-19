@@ -1,0 +1,120 @@
+{
+  "duration_api_ms": 165081,
+  "stop_reason": "end_turn",
+  "session_id": "832cbffe-76be-4c72-a831-b5654053c638",
+  "total_cost_usd": 1.4244534999999998,
+  "usage": {
+    "input_tokens": 28,
+    "cache_creation_input_tokens": 32485,
+    "cache_read_input_tokens": 371094,
+    "output_tokens": 13634,
+    "output_tokens_details": {
+      "thinking_tokens": 5944
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 32485,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 2077,
+        "cache_read_input_tokens": 40153,
+        "cache_creation_input_tokens": 2579,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 2579
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 28,
+      "outputTokens": 13634,
+      "cacheReadInputTokens": 371094,
+      "cacheCreationInputTokens": 32485,
+      "webSearchRequests": 0,
+      "costUSD": 1.4244534999999998,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 5944,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 24,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "# Review of PR #12116, \"fix(i18n): restore dropped placeholders in si-LK strings\"\n\n## Verdict: reject — close the PR and move the fix to Crowdin\n\nThe bug is real and the author was open about not speaking Sinhala. The PR still can't be merged in any form, because any hand-edit to `si-LK.json` is overwritten by the next Crowdin sync. Request-changes would imply a revision could land, and none can.\n\nI did not run `yarn test` or `yarn test:typecheck`. The change is 4 lines of JSON in a locale the app doesn't load.\n\n## Findings, most severe first\n\n### 1. The edit will be overwritten\n- **Location:** `packages/excalidraw/locales/si-LK.json` (entire change).\n- **Cause:**\n  - `packages/excalidraw/locales/README.md:3` says \"Please do not contribute changes directly to these files, as we manage them with Crowdin.\"\n  - `crowdin.yml` maps `%locale%.json` as Crowdin output.\n  - Every commit to this file since the 2023 yarn-workspaces restructure is an `Excalidraw Bot` \"Update translations from Crowdin\" sync.\n  - The next sync re-exports Crowdin's copy, which lacks the tokens, and reverts this PR.\n- **Fix:** Close the PR and correct the four strings in the Crowdin project.\n\n### 2. The tokens are appended to strings that are already mistranslated\n- **Location:** `si-LK.json:285`, `:511`, `:566`, `:572`.\n- **Cause:** The existing Sinhala strings translate the key names, not the English text. Appending a token keeps the wrong sentence.\n  - `:511` reads roughly \"Publication success content (Alice)\". The English is \"Thank you Alice. Your library has been submitted for review…\".\n  - `:566` interpolates `toast.canvas`, whose si-LK value (`:570`) means \"canvas toast\". The toast becomes \"Copied to clipboard as PNG (canvas toast, light mode)\".\n  - `:285` reads \"Remove items from library (3)\". The English is a confirmation question for a destructive action, and the question is lost.\n  - This is my own reading of the Sinhala, not a native speaker's.\n- **Fix:** Retranslate the strings from the English text in Crowdin, and have a Sinhala speaker review them.\n\n### 3. One string the PR touches is still broken\n- **Location:** `si-LK.json:511`, `publishSuccessDialog.content`.\n- **Cause:** The English string also contains `<link>here</link>`, and the PR's version does not. In `LibraryMenuHeaderContent.tsx:116-128`, `Trans` renders the `link` prop only when that tag is in the string. The success dialog therefore has no link for tracking the submission.\n- **Fix:** The translation must wrap the link text in `<link>…</link>`.\n\n### 4. The PR says it restores the 4 missing placeholders, but 17 strings still mismatch\n- **Location:** A parity check of the PR head against `en.json` found:\n  - Three `{{…}}` placeholders: `alerts.confirmAddLibrary` (`{{numShapes}}`), `errors.fileTooBig` (`{{maxSize}}`) and `errorSplash.trackedToSentry` (`{{eventId}}`). These are probably the three already tracked in #12097, which I didn't open.\n  - `toast.fileSavedToFilename` (`:569`), missing `{filename}`.\n  - 13 strings missing tags: `<link>`, `<button>`, `<bold>`, `<br>`, `<issueLink>`, `<discordLink>`.\n- **Cause:** The author's check apparently matched only `{{x}}`. The single-brace `{filename}` is consumed by `.replace(\"{filename}\", …)` at `actionExport.tsx:297`, so the filename is dropped without any error. Missing tags remove links and buttons, including the reload button on the error splash.\n- **Fix:** Correct these in Crowdin too. Any parity check should also cover `{x}` and `<tag>`.\n\n### 5. No user can currently see this bug\n- **Location:** `packages/excalidraw/i18n.ts:23-74` and `locales/percentages.json:46`.\n- **Cause:** si-LK is not in the `languages` list. Its 65% completion is below `COMPLETION_THRESHOLD = 85`, and 219 of its 622 strings are empty.\n- **Fix:** None needed. Nothing here justifies bypassing Crowdin.\n\n### 6. The PR body cites a test that isn't merged\n- **Location:** PR description, last paragraph.\n- **Cause:** It says #12109's parity test \"currently exempts si-LK\". #12109 is still open, and `tests/localePlaceholders.test.ts` does not exist on master. No CI check guards this change.\n- **Fix:** Raise the exemption concern on #12109 instead.\n\n### 7. Nit: line breaks\n- **Location:** `si-LK.json:566`, `:572`.\n- **Cause:** The English strings carry `\\n` line breaks (`en.json:574`, `:580`) that the si-LK strings don't reproduce.\n- **Fix:** Address this when the strings are retranslated.\n\n## What is correct\n- The JSON is valid.\n- All five token names match `en.json` exactly.\n- The four call sites pass exactly those tokens: `LibraryMenuHeaderContent.tsx:64` and `:117`, `actionClipboard.tsx:224`, `App.tsx:5130`.\n- The diff is limited to the four lines.\n- Issue #12115 accurately describes the dropped values.\n\n## Suggested closing note to the author\nThank them for the report. Point to the locales README and Crowdin. Note the `<link>` and `{filename}` gaps, since those improve the detection script.\n\n## Local side effects\n- No repo files were modified.\n- `git fetch` created a local branch `pr-12116`. Remove it with `git branch -D pr-12116` when you're done.\n- I wrote one scratch file to `/tmp` and deleted it.\n- `gh` is not authenticated, so nothing was posted to GitHub.",
+  "ttft_ms": 13616,
+  "type": "result",
+  "duration_ms": 221296,
+  "uuid": "0908c9d9-7dc8-44de-a64d-0d5deee63824",
+  "ttft_stream_ms": 12764,
+  "time_to_request_ms": 10820,
+  "first_content_frame_ms": 12806,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "proactive",
+    "prompt": "review-pr-12116",
+    "wall_s": 237,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      },
+      "outputStyle": "Proactive"
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

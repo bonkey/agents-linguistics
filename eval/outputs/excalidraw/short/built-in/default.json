@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 36789,
+  "stop_reason": "end_turn",
+  "session_id": "126503bd-716e-4fda-a02a-12d83c0619c4",
+  "total_cost_usd": 0.5444845,
+  "usage": {
+    "input_tokens": 14,
+    "cache_creation_input_tokens": 18827,
+    "cache_read_input_tokens": 144618,
+    "output_tokens": 2633,
+    "output_tokens_details": {
+      "thinking_tokens": 260
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 18827,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 1310,
+        "cache_read_input_tokens": 28192,
+        "cache_creation_input_tokens": 869,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 869
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 14,
+      "outputTokens": 2633,
+      "cacheReadInputTokens": 144618,
+      "cacheCreationInputTokens": 18827,
+      "webSearchRequests": 0,
+      "costUSD": 0.5444845,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 260,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 7,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "The allowlist is in `packages/element/src/embeddable.ts`, as two module-level `Set`s:\n\n- **`ALLOWED_DOMAINS`** (`embeddable.ts:133`) lists the hostnames that pass default validation: YouTube, Vimeo, Drive, Figma, Gist, Twitter/X, `*.simplepdf.eu`, StackBlitz, val.town, Giphy, Reddit and MS Forms.\n- **`ALLOW_SAME_ORIGIN`** (`embeddable.ts:152`) is a subset whose iframes also get `allow-same-origin` in the `sandbox` attribute, which is applied at `packages/excalidraw/components/App.tsx:2096`.\n\n### Adding a domain\n\n1. **Add the hostname to `ALLOWED_DOMAINS`** (required).\n   - Use the bare hostname with no `www.`, because `matchHostname` (`embeddable.ts:439`) strips `www.` before the lookup.\n   - Matching is exact, so other subdomains need their own entry. `vimeo.com` and `player.vimeo.com` are listed separately for this reason.\n   - A `*.example.com` entry wildcards the first label only.\n2. **Add it to `ALLOW_SAME_ORIGIN`** only if the embed breaks without it, for example players that need cookies or storage.\n   - Leave it out otherwise; `gist.github.com`, `val.town`, `giphy.com` and `link.excalidraw.com` are deliberately absent.\n   - The entry must be spelled identically in both sets. `matchHostname` returns the key it found in `ALLOWED_DOMAINS`, even when called with the other set, and that key is then looked up in `ALLOW_SAME_ORIGIN`.\n3. **Add URL rewriting in `getEmbedLink`** (`embeddable.ts:171`) only if the share URL isn't directly iframe-able.\n   - Add a `RE_*` regex at the top of the file and a branch that rewrites the link to its embed form.\n   - Set `intrinsicSize` and `type` (`\"video\"`, `\"generic\"`, or `\"document\"` with a `srcdoc`, as Twitter, Reddit and Gist do), and write the result to `embeddedLinkCache`.\n   - Without a branch the URL falls through and is embedded as-is at 560×840.\n4. **Extend `maybeParseEmbedSrc`** (`embeddable.ts:474`) only if users will paste an embed snippet such as `<blockquote>` or `<script>` that `RE_GENERIC_EMBED` doesn't already unwrap.\n5. **Add tests** in `packages/element/tests/embeddable.test.ts`.\n   - The Google Drive block there is a good template. Its \"should validate Google Drive domain by default\" case checks `embeddableURLValidator`, and the others check the rewritten link.\n   - Then run `yarn test:update` and `yarn test:typecheck`, as the project's `CLAUDE.md` asks.\n6. **Add a `packages/excalidraw/CHANGELOG.md` entry.** Previous domain additions are recorded there.\n\n### Host-app override\n\n`embeddableURLValidator` (`embeddable.ts:502`) only falls back to `ALLOWED_DOMAINS` when the `validateEmbeddable` prop is unset or its function returns `undefined`. The prop accepts `true`, a hostname array, a RegExp or RegExp array, or a function, so a host app can allow a domain without touching the library. It is documented in `dev-docs/docs/@excalidraw/excalidraw/api/props/props.mdx:253`.\n\nThat override only affects validation. The `allow-same-origin` decision in `getEmbedLink` always comes from the built-in `ALLOW_SAME_ORIGIN` set, so domains allowed via the prop are still sandboxed without it.",
+  "ttft_ms": 16066,
+  "type": "result",
+  "duration_ms": 104520,
+  "uuid": "07b57b0a-4fef-45d5-bee0-2517f9a6fb08",
+  "ttft_stream_ms": 14624,
+  "time_to_request_ms": 12849,
+  "first_content_frame_ms": 14699,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "default",
+    "prompt": "short",
+    "wall_s": 119,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": false,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}

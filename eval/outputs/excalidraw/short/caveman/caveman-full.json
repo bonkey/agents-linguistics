@@ -1,0 +1,119 @@
+{
+  "duration_api_ms": 21456,
+  "stop_reason": "end_turn",
+  "session_id": "478d8f49-bd48-47c8-b3fd-1b6060cffacd",
+  "total_cost_usd": 0.492282,
+  "usage": {
+    "input_tokens": 10,
+    "cache_creation_input_tokens": 19765,
+    "cache_read_input_tokens": 103928,
+    "output_tokens": 1418,
+    "output_tokens_details": {
+      "thinking_tokens": 33
+    },
+    "server_tool_use": {
+      "web_search_requests": 0,
+      "web_fetch_requests": 0
+    },
+    "service_tier": "standard",
+    "cache_creation": {
+      "ephemeral_1h_input_tokens": 19765,
+      "ephemeral_5m_input_tokens": 0
+    },
+    "inference_geo": "not_available",
+    "iterations": [
+      {
+        "input_tokens": 2,
+        "output_tokens": 759,
+        "cache_read_input_tokens": 29761,
+        "cache_creation_input_tokens": 238,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 238
+        },
+        "type": "message"
+      }
+    ],
+    "speed": "standard"
+  },
+  "modelUsage": {
+    "claude-fable-5-1": {
+      "inputTokens": 10,
+      "outputTokens": 1418,
+      "cacheReadInputTokens": 103928,
+      "cacheCreationInputTokens": 19765,
+      "webSearchRequests": 0,
+      "costUSD": 0.492282,
+      "contextWindow": 1000000,
+      "maxOutputTokens": 64000,
+      "thinkingTokens": 33,
+      "canonicalModel": "claude-fable-5-1",
+      "provider": "firstParty",
+      "costBasis": "list"
+    }
+  },
+  "permission_denials": [],
+  "terminal_reason": "completed",
+  "fast_mode_state": "off",
+  "fast_mode_disabled_reason": "sdk_opt_in_required",
+  "subagent_stats": {
+    "spawned": 0,
+    "requested": {
+      "background": 0,
+      "foreground": 0,
+      "unset": 0
+    },
+    "started_in_background": 0,
+    "max_depth": 0,
+    "spawned_by_subagents": 0,
+    "completed": 0,
+    "failed": 0,
+    "killed": {
+      "parent": 0,
+      "user": 0,
+      "system": 0
+    },
+    "refused": {
+      "depth_limit": 0,
+      "concurrency_limit": 0,
+      "budget": 0
+    },
+    "by_type": {}
+  },
+  "is_error": false,
+  "num_turns": 5,
+  "subtype": "success",
+  "api_error_status": null,
+  "result": "Allowlist lives in `packages/element/src/embeddable.ts:133` as `ALLOWED_DOMAINS` Set. Second Set `ALLOW_SAME_ORIGIN` at `:152`.\n\nAdd new domain:\n\n1. Add bare hostname to `ALLOWED_DOMAINS`. No `www.` prefix, `matchHostname` (`:439`) strips it. Wildcard supported for first subdomain only: `*.example.com`.\n2. If embed needs cookies/storage/same-origin scripts, add also to `ALLOW_SAME_ORIGIN`. This sets `sandbox.allowSameOrigin` on iframe. Weaker sandbox, add only for trusted domain.\n3. If raw URL not directly embeddable, add `RE_*` regex at top plus branch in `getEmbedLink` (`:171`). Branch rewrites link to embed form (see YouTube, Vimeo, Figma), sets `intrinsicSize` and `type`, writes `embeddedLinkCache`. Script-based embeds (Twitter, Reddit, Gist) return `type: \"document\"` with `srcdoc`. Escape URL with `escapeDoubleQuotes`.\n4. If users paste embed HTML snippet, not URL, extend `maybeParseEmbedSrc` (`:474`). Generic `<iframe src>` / `<blockquote href>` already handled by `RE_GENERIC_EMBED`.\n5. Add test in `packages/element/tests/embeddable.test.ts`. Run `yarn test:update` and `yarn test:typecheck`.\n\nPlain iframe-friendly domain needs step 1 only. Falls through to generic branch at `:388`.\n\nGotcha: `matchHostname` with Set argument always checks `ALLOWED_DOMAINS` (`:450`, `:458`), ignores passed Set. Return value then checked against `ALLOW_SAME_ORIGIN.has()` at `:184`, so result still correct. Wildcard entries must use identical string in both Sets.\n\nHost apps skip allowlist via `validateEmbeddable` prop (boolean, RegExp, array, function), see `embeddableURLValidator` at `:502`. No edit to library needed for that path.",
+  "ttft_ms": 15224,
+  "type": "result",
+  "duration_ms": 65383,
+  "uuid": "659fe4d3-d205-448e-8621-34e4c6dad80d",
+  "ttft_stream_ms": 14875,
+  "time_to_request_ms": 12501,
+  "first_content_frame_ms": 14876,
+  "queued_turn_count": 0,
+  "result_index": 0,
+  "eval": {
+    "project": "excalidraw",
+    "ref": "c0ad61c6743a",
+    "arm": "caveman-full",
+    "prompt": "short",
+    "wall_s": 85,
+    "settings": {
+      "enabledPlugins": {
+        "agents-output-styles@bonkey": false,
+        "caveman@caveman": true,
+        "i-have-adhd@i-have-adhd": false
+      }
+    },
+    "caveman_mode": "full",
+    "plugin_dir": "",
+    "harness": {
+      "tool": "Claude Code",
+      "version": "2.1.278",
+      "model": "claude-fable-5-1",
+      "effort": "xhigh"
+    }
+  }
+}
