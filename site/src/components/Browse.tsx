@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ARMS, ARM_BY_ID } from '../data/arms'
-import { PROMPTS, PROMPT_ORDER, harnessLabel, samplesFor } from '../data/samples'
+import { PROMPTS, PROMPT_ORDER, harnessLabel, samplesFor, type Sample } from '../data/samples'
 import { KIND_CLASS } from './Landing'
 import { Markdown } from './Markdown'
 
@@ -30,6 +30,15 @@ export function Browse() {
 
   return (
     <main className="page browse">
+      <details className="how muted small">
+        <summary>How the ranking works</summary>
+        <ol>
+          <li>You see two answers to the same question, labelled A and B. Names stay hidden.</li>
+          <li>You pick the one you would rather read, or say you have no preference.</li>
+          <li>The next pair is chosen so that every pick carries information: the style with the fewest picks meets the one closest to it in score.</li>
+          <li>After ten picks the names come out, with a Bradley-Terry score from your picks. Keep going on the short answers, or switch to the long review answers to test structure.</li>
+        </ol>
+      </details>
       <div className="tabs" role="tablist" aria-label="Prompt">
         {PROMPT_ORDER.map((p) => (
           <button key={p} role="tab" aria-selected={prompt === p} className={`tab${prompt === p ? ' active' : ''}`} onClick={() => setPrompt(p)}>
@@ -59,6 +68,7 @@ interface ColumnProps {
 function Column({ side, index, prompt, onSelect, onStep, keyHint }: ColumnProps) {
   const info = ARMS[index]
   const samples = samplesFor(info.id, prompt)
+  const meta = (s: Sample) => `${samples.length > 1 ? `Run ${s.run} · ` : ''}${s.words} words · ${harnessLabel(s.harness)}`
   return (
     <div className="column">
       <div className="chips" role="tablist" aria-label={`${side} style`}>
@@ -79,11 +89,14 @@ function Column({ side, index, prompt, onSelect, onStep, keyHint }: ColumnProps)
             <button className="arrow" onClick={() => onStep(1)} aria-label={`${side}: next style`} title={`${keyHint}: next`}>→</button>
           </span>
         </div>
-        <p className="muted small pane-summary">{ARM_BY_ID.get(info.id)!.summary}</p>
+        <div className="muted small pane-info">
+          <p className="pane-summary">{ARM_BY_ID.get(info.id)!.summary}</p>
+          {samples[0] && <div>{meta(samples[0])}</div>}
+        </div>
         {samples.length === 0 && <p className="muted">No answer recorded for this prompt.</p>}
-        {samples.map((s) => (
+        {samples.map((s, i) => (
           <section key={s.id}>
-            <div className="muted small">{samples.length > 1 ? `Run ${s.run} · ` : ''}{s.words} words · {harnessLabel(s.harness)}</div>
+            {i > 0 && <div className="muted small sample-meta">{meta(s)}</div>}
             <Markdown text={s.text} />
           </section>
         ))}

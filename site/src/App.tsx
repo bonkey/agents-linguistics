@@ -4,11 +4,12 @@ import { Compare, ROUND } from './components/Compare'
 import { Landing } from './components/Landing'
 import { Nav, type Phase } from './components/Nav'
 import { Results } from './components/Results'
+import { Styles } from './components/Styles'
 import { PROMPT_ORDER } from './data/samples'
 import { gamesFor, type Comparison } from './lib/ranking'
 import { clear, load, save } from './lib/storage'
 
-const HASH: Record<Phase, string> = { landing: '', compare: '#compare', results: '#results', browse: '#browse' }
+const HASH: Record<Phase, string> = { landing: '', compare: '#compare', results: '#results', browse: '#browse', styles: '#styles' }
 
 function phaseFromHash(hash: string): Phase {
   const found = (Object.keys(HASH) as Phase[]).find((p) => HASH[p] === hash && hash !== '')
@@ -21,7 +22,9 @@ export default function App() {
   const [phase, setPhase] = useState<Phase>(() => phaseFromHash(window.location.hash))
 
   useEffect(() => save({ comps }), [comps])
-  useEffect(() => window.scrollTo({ top: 0 }), [phase, comps.length])
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [phase, comps.length])
 
   // The phase lives in the URL hash, so the browser's back button and a shared link both work.
   useEffect(() => {
@@ -67,6 +70,9 @@ export default function App() {
       break
     case 'browse':
       body = <Browse />
+      break
+    case 'styles':
+      body = <Styles />
       break
     default:
       body = <Landing onStart={() => start(prompt)} onBrowse={() => setPhase('browse')} resumable={comps.length > 0} />

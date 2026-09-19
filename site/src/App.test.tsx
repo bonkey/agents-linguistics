@@ -49,9 +49,58 @@ describe('App', () => {
     expect(screen.getByRole('heading', { name: 'Your results' })).toBeTruthy()
   })
 
+  it('keeps the ranking steps in a closed disclosure at the top of browse', () => {
+    render(<App />)
+    expect(screen.queryByText('How the ranking works')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Browse all answers' }))
+    const details = screen.getByText('How the ranking works').closest('details')
+    expect(details?.open).toBe(false)
+    expect(details?.querySelectorAll('ol li')).toHaveLength(4)
+  })
+
   it('browses answers with names shown', () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: 'Browse all answers' }))
     expect(document.querySelector('.pane-head')?.textContent).toContain(ARMS[0].name)
+  })
+
+  it('lists every style in its own section', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Styles' }))
+    expect(screen.getByRole('heading', { name: 'The styles in the test' })).toBeTruthy()
+    expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Built into Claude Code', 'Custom style file', 'Plugins'])
+    // Arms that share a link form one subsection: the Caveman modes sit under one "Caveman" heading.
+    const h3 = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent)
+    expect(h3).toEqual(['Default', 'Concise', 'Proactive', 'Explanatory', 'Learning', 'STE Concise', 'Caveman', 'I have ADHD'])
+    expect(screen.getAllByRole('heading', { level: 4 }).map((h) => h.textContent)).toEqual(['Lite', 'Full', 'Ultra'])
+    const hrefs = screen.getAllByRole('link', { name: 'Source' }).map((l) => l.getAttribute('href'))
+    expect(new Set(hrefs).size).toBe(hrefs.length)
+    for (const a of ARMS) expect(hrefs, a.name).toContain(a.link)
+    expect(window.location.hash).toBe('#styles')
+  })
+
+  it('links to the repository from the nav', () => {
+    render(<App />)
+    expect(screen.getByRole('link', { name: 'GitHub repository' }).getAttribute('href')).toBe('https://github.com/bonkey/agents-linguistics')
+    expect(screen.queryByRole('button', { name: 'Test your style' })).toBeNull()
+  })
+
+  it('shows the landing page for a hash that names no view', () => {
+    window.history.replaceState(null, '', '/#own')
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('Ten ways Claude can talk.')
+  })
+
+  it('mounts and navigates when window.scrollTo returns a Promise', () => {
+    // Chrome returns a Promise from scrollTo. React calls whatever an effect returns as its cleanup.
+    const scrollTo = window.scrollTo
+    window.scrollTo = (() => Promise.resolve()) as unknown as typeof window.scrollTo
+    try {
+      render(<App />)
+      fireEvent.click(screen.getByRole('button', { name: 'Styles' }))
+      expect(screen.getByRole('heading', { name: 'The styles in the test' })).toBeTruthy()
+    } finally {
+      window.scrollTo = scrollTo
+    }
   })
 })

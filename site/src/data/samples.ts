@@ -19,7 +19,6 @@ export interface Harness {
 
 export const PROMPTS: Record<string, string> = raw.prompts
 export const SAMPLES: Sample[] = raw.samples
-export const HARNESSES: Harness[] = raw.harnesses
 
 export function harnessLabel(h: Harness | null | undefined): string {
   if (!h) return 'harness unknown'
