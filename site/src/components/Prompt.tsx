@@ -7,14 +7,18 @@ export function Prompt({ prompt, label = 'Prompt' }: { prompt: PromptData; label
   return (
     <p className="prompt">
       <span className="prompt-label">{label}</span>
-      <span className="prompt-text">
-        {at < 0 ? prompt.text : (
-          <>
-            {prompt.text.slice(0, at)}
-            <a href={url} target="_blank" rel="noreferrer">{url}</a>
-            {prompt.text.slice(at + url.length)}
-          </>
-        )}
+      <span className="prompt-line">
+        <span className="prompt-marker" aria-hidden="true">&gt;</span>
+        <span className="prompt-text">
+          {at < 0 ? prompt.text : (
+            <>
+              {prompt.text.slice(0, at)}
+              <a href={url} target="_blank" rel="noreferrer">{url}</a>
+              {prompt.text.slice(at + url.length)}
+            </>
+          )}
+          <span className="prompt-cursor" aria-hidden="true" />
+        </span>
       </span>
     </p>
   )

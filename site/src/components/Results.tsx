@@ -14,10 +14,18 @@ interface Props {
 }
 
 export function Results({ comps, question, onContinue, onReset, onBrowse }: Props) {
-  const rows = standings(ARM_IDS, comps)
+  // The ranking follows one question, or pools every question when the scope is "all".
+  // Default to the question just played; fall back to the pool if it has no picks yet.
+  const [scope, setScope] = useState<'all' | Question>(() =>
+    gamesFor(comps, question.project, question.prompt) > 0 ? question : 'all',
+  )
+  const target = scope === 'all' ? question : scope
+  const { project, prompt } = resolve(target)
+  const scoped = scope === 'all' ? comps : comps.filter((c) => c.project === scope.project && c.prompt === scope.prompt)
+  const rows = standings(ARM_IDS, scoped)
   const [open, setOpen] = useState<string | null>(rows[0]?.arm ?? null)
   const max = rows[0]?.score ?? 1
-  const { project, prompt } = resolve(question)
+  const played = gamesFor(comps, project.id, prompt.id)
 
   if (comps.length === 0) {
     return (
@@ -25,7 +33,7 @@ export function Results({ comps, question, onContinue, onReset, onBrowse }: Prop
         <h1>No picks yet</h1>
         <p className="muted">The ranking appears after your first pick.</p>
         <div className="actions">
-          <button className="primary big" onClick={() => onContinue(question)}>Start the test</button>
+          <button className="primary big" onClick={() => onContinue(question)}>Find your style</button>
           <button className="big" onClick={onBrowse}>Browse all answers</button>
         </div>
       </main>
@@ -36,8 +44,27 @@ export function Results({ comps, question, onContinue, onReset, onBrowse }: Prop
     <main className="page narrow">
       <h1>Your results</h1>
       <p className="muted">
-        {comps.length} picks in total. Score is a Bradley-Terry strength; the record is wins, ties, losses.
+        {scope === 'all'
+          ? `${scoped.length} picks across every question.`
+          : `${scoped.length} picks on ${promptLabel(project, prompt)}.`}{' '}
+        Record is wins-ties-losses; score is a Bradley-Terry strength.
       </p>
+
+      <div className="scope">
+        <QuestionPicker
+          value={target}
+          onChange={setScope}
+          leading={{ label: 'All questions', selected: scope === 'all', onSelect: () => setScope('all') }}
+        />
+        {scope !== 'all' && <p className="muted small scope-prompt">{prompt.text}</p>}
+      </div>
+      <div className="ranking-head" aria-hidden="true">
+        <span />
+        <span>Style</span>
+        <span className="record">Record</span>
+        <span className="bar-col" />
+        <span className="score">Score</span>
+      </div>
       <ol className="ranking">
         {rows.map((r, i) => {
           const info = ARM_BY_ID.get(r.arm)!
@@ -50,7 +77,7 @@ export function Results({ comps, question, onContinue, onReset, onBrowse }: Prop
                   {info.name} <span className="chip">{info.kind}</span>
                 </span>
                 <span className="record">{r.wins}-{r.ties}-{r.losses}</span>
-                <span className="bar-wrap"><span className="bar-fill" style={{ width: `${(100 * r.score) / max}%` }} /></span>
+                <span className="bar-wrap"><span className="bar-fill" style={{ width: `${(100 * r.score) / max}%`, minWidth: r.score > 0 ? 3 : 0 }} /></span>
                 <span className="score">{r.score.toFixed(1)}</span>
               </button>
               {isOpen && (
@@ -64,16 +91,15 @@ export function Results({ comps, question, onContinue, onReset, onBrowse }: Prop
           )
         })}
       </ol>
+
       <div className="actions">
-        <button className="primary" onClick={() => onContinue(question)}>
-          More picks on {promptLabel(project, prompt)} ({gamesFor(comps, project.id, prompt.id)}/{totalPairs(ARM_IDS.length)} pairs)
+        <button className="primary" onClick={() => onContinue(target)}>
+          {played === 0 ? 'Start' : 'More'} picks on {promptLabel(project, prompt)} ({played}/{totalPairs(ARM_IDS.length)} pairs)
         </button>
         <button onClick={onBrowse}>Browse all answers</button>
         <button className="link danger" onClick={onReset}>Reset my picks</button>
       </div>
-      <p className="muted small pick-another">Or pick another question:</p>
-      <QuestionPicker value={question} onChange={onContinue} />
-      <p className="muted small">{prompt.text}</p>
+
       <HowItWorks />
     </main>
   )

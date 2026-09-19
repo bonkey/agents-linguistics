@@ -28,7 +28,7 @@ export function Nav({ phase, picks, onNav }: Props) {
         </svg>
       </a>
       <button className="primary nav-cta" onClick={() => onNav('compare')} aria-current={phase === 'compare' ? 'page' : undefined}>
-        {picks ? 'Continue' : 'Start'}
+        {picks ? 'Continue' : 'Find yours'}
       </button>
     </nav>
   )

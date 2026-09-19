@@ -20,7 +20,7 @@
   --shadow: 0 1px 2px rgba(30, 20, 5, 0.06), 0 12px 32px -16px rgba(30, 20, 5, 0.25);
   --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --display: "Fraunces", "Iowan Old Style", Georgia, serif;
-  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --mono: "Google Sans Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
@@ -55,6 +55,7 @@ html, body {
   background-attachment: fixed;
 }
 button, select { font: inherit; }
+code, pre, kbd, samp { font-family: var(--mono); }
 a { color: var(--accent-text); }
 h1, h2 { font-family: var(--display); font-weight: 600; letter-spacing: -0.01em; line-height: 1.1; margin: 0 0 12px; }
 h1 { font-size: clamp(2.2rem, 5.5vw, 4rem); font-variation-settings: "SOFT" 50; }
@@ -131,17 +132,35 @@ button.danger { color: var(--danger); }
 .style-variant h4 { font: 600 0.95rem/1.3 var(--font); margin: 0 0 2px; }
 
 /* The question the answers respond to: the anchor of the browse header and of the test bar. */
-.prompt { margin: 16px 0 20px; max-width: 85ch; font: 400 1.25rem/1.4 var(--display); }
-.prompt-label { display: block; margin-bottom: 4px; font: 600 0.75rem/1.3 var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prompt {
+  margin: 16px 0 20px; width: 100%; min-width: 0; padding: 16px 20px;
+  font: 400 1rem/1.6 var(--mono);
+  background: color-mix(in srgb, var(--bg-2) 70%, var(--line));
+  border: 1px solid var(--line); border-radius: 10px;
+}
+.prompt-label { display: block; margin-bottom: 8px; font: 600 0.75rem/1.3 var(--font); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prompt-line { display: grid; grid-template-columns: 1ch minmax(0, 1fr); gap: 12px; }
+.prompt-marker { color: var(--accent-text); font-weight: 600; user-select: none; }
+.prompt-text { max-width: calc(75ch + 0.85em); padding-right: 0.85em; white-space: pre-wrap; overflow-wrap: anywhere; }
+.prompt-cursor {
+  display: inline-block; position: relative; width: 0; height: 1.1em;
+  vertical-align: -0.15em;
+  animation: prompt-blink 1.2s step-end infinite;
+}
+.prompt-cursor::after {
+  content: ''; position: absolute; left: 0.2em; width: 0.65em; height: 100%;
+  background: var(--accent-text);
+}
+@keyframes prompt-blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .prompt-cursor { animation: none; } }
 
 /* compare */
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 8px 0 16px; }
 .bar .prompt { margin: 0; flex: 1 1 40ch; }
-/* The ranking steps: one quiet item at the end of the bar, on a row of its own when open. */
-.how { max-width: 62ch; margin-left: auto; }
-.how[open] { flex-basis: 100%; margin-left: 0; }
+/* The ranking steps occupy their own row, whether collapsed or expanded. */
+.how { flex-basis: 100%; min-width: 0; }
 .how summary { cursor: pointer; width: fit-content; }
-.how ol { margin: 8px 0 0; padding-left: 1.4em; }
+.how ol { max-width: 62ch; margin: 8px 0 0; padding-left: 1.4em; }
 .how li { margin: 4px 0; }
 .bar.sticky {
   position: fixed; left: 0; right: 0; bottom: 0; justify-content: center; padding: 14px 16px;
@@ -166,20 +185,39 @@ button.danger { color: var(--danger); }
 .md p, .md ul, .md ol { margin: 0.6em 0; }
 .md pre { background: var(--code); border-radius: 10px; padding: 10px 12px; overflow-x: auto; font: 0.84rem/1.45 var(--mono); }
 .md code { font: 0.9em var(--mono); background: var(--code); padding: 1px 5px; border-radius: 5px; }
-.md pre code { background: none; padding: 0; }
+.md pre code { font: inherit; background: none; padding: 0; }
+.md .insight-title {
+  display: flex; align-items: center; gap: 12px;
+  margin: 1.2em 0 0.4em; font-weight: 600; color: var(--accent-text);
+}
+.md .insight-title::after { content: ''; flex: 1; border-top: 1px solid var(--line); }
 .md table { border-collapse: collapse; font-size: 0.9rem; }
 .md th, .md td { border: 1px solid var(--line); padding: 4px 8px; text-align: left; }
 .md blockquote { margin: 0.6em 0; padding-left: 12px; border-left: 3px solid var(--line); color: var(--muted); }
 
 /* ranking */
 .ranking { list-style: none; padding: 0; margin: 16px 0; }
+/* Column labels above the list; fixed widths so they line up with the rows below. */
+.ranking-head {
+  display: grid; grid-template-columns: 2.2rem 1fr 4.5rem 8rem 3.5rem; gap: 12px; align-items: center;
+  padding: 0 16px 6px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted);
+}
+.ranking-head .record, .ranking-head .score { text-align: right; }
+.ranking-head + .ranking { margin-top: 8px; }
+/* Results: the scope selector sits above the ranking it controls. */
+.scope { margin: 20px 0 24px; }
+.scope-prompt { margin: 10px 0 0; max-width: 70ch; }
 .ranking li { border: 1px solid var(--line); border-radius: var(--radius); margin-bottom: 10px; background: var(--pane); overflow: hidden; box-shadow: var(--shadow); }
 .ranking li:first-child { border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
 .ranking .row {
-  display: grid; grid-template-columns: 2.2rem 1fr auto 8rem 3.5rem; gap: 12px; align-items: center;
+  display: grid; grid-template-columns: 2.2rem 1fr 4.5rem 8rem 3.5rem; gap: 12px; align-items: center;
   width: 100%; border: 0; border-radius: 0; background: none; text-align: left; padding: 14px 16px; box-shadow: none;
 }
-@media (max-width: 600px) { .ranking .row { grid-template-columns: 2.2rem 1fr auto 3.5rem; } .ranking .bar-wrap { display: none; } }
+@media (max-width: 600px) {
+  .ranking-head { grid-template-columns: 2.2rem 1fr 4.5rem 3.5rem; }
+  .ranking .row { grid-template-columns: 2.2rem 1fr 4.5rem 3.5rem; }
+  .ranking .bar-wrap, .ranking-head .bar-col { display: none; }
+}
 .ranking .rank { font-family: var(--display); font-weight: 600; font-size: 1.2rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 .ranking li:first-child .rank { color: var(--accent); }
 .ranking .name { font-weight: 600; }
@@ -195,7 +233,6 @@ select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; 
 
 /* browse */
 .project-line { margin: 0 0 12px; }
-.pick-another { margin: 32px 0 8px; }
 .tabs select { margin-right: 6px; }
 .tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0 0; }
 .tab { border: 1px solid var(--line); background: var(--pane); color: var(--muted); border-radius: 999px; padding: 8px 16px; }
@@ -233,3 +270,49 @@ select { padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; 
 .arrow { border: 1px solid var(--line); background: var(--pane); border-radius: 999px; width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center; }
 .arrow:hover { border-color: var(--accent); color: var(--accent); }
 button.link.small { padding: 4px 6px; }
+
+/* compare: the three votes are one compact control, pinned under the nav while the answers scroll.
+   The two poles carry the preference (accent text and outward chevrons); the middle stays neutral.
+   The pane heads carry the letter and a quiet meta line; progress lives in the bottom bar. */
+.vote-nav {
+  position: sticky; top: var(--nav-height); z-index: 8;
+  display: flex; align-items: stretch; width: fit-content; margin: 0 auto 20px;
+  padding: 4px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--line); border-radius: 999px;
+  box-shadow: var(--shadow);
+}
+.vote-nav button {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 0; background: none; box-shadow: none; border-radius: 0;
+  padding: 10px 20px; color: var(--muted); white-space: nowrap;
+}
+/* Square inner corners so a hovered segment meets the hairline flush; only the outer ends round. */
+.vote-nav .vote-a { border-radius: 999px 0 0 999px; }
+.vote-nav .vote-b { border-radius: 0 999px 999px 0; }
+.vote-nav button:hover { background: var(--bg-2); color: var(--fg); }
+.vote-nav .vote-a, .vote-nav .vote-b { color: var(--accent-text); font-weight: 600; }
+.vote-nav .vote-a:hover, .vote-nav .vote-b:hover {
+  background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text);
+}
+.vote-nav .vote-a::before { content: '←'; }
+.vote-nav .vote-b::after { content: '→'; }
+/* Hairlines keep the three segments reading as one control. */
+.vote-nav .vote-tie { border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
+.compare-pair .pane-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.compare-pair .pane-label { grid-column: 1; justify-self: start; }
+.compare-pair .pane-meta {
+  grid-column: 2; justify-self: center; text-align: center;
+  font-family: var(--font); font-size: 0.76rem; font-weight: 400; color: var(--muted);
+}
+/* On a phone the vote control docks at the bottom, filling the width with big tap targets. */
+@media (max-width: 900px) {
+  .vote-nav {
+    position: fixed; top: auto; left: 0; right: 0; bottom: 0; width: auto; margin: 0; z-index: 9;
+    padding: 10px 12px; border-radius: 0; border-left: 0; border-right: 0; border-bottom: 0; box-shadow: none;
+  }
+  .vote-nav button { flex: 1; justify-content: center; padding: 10px 8px; font-size: 0.85rem; }
+  .bar.sticky { bottom: 61px; }
+  .page.compare { padding-bottom: 168px; }
+}

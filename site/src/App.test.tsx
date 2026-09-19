@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import App from './App'
 import { ARMS } from './data/arms'
-import { PROJECTS, defaultQuestion, samplesFor } from './data/samples'
+import { PROJECTS, defaultQuestion, promptLabel, samplesFor } from './data/samples'
 
 beforeEach(() => { localStorage.clear(); window.history.replaceState(null, '', '/') })
 afterEach(cleanup)
@@ -27,7 +27,7 @@ describe('data', () => {
 describe('App', () => {
   it('walks from landing to a hidden-name pair to the ranking', () => {
     render(<App />)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Start the test' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Find your style' })[0])
 
     // Two panes, labelled A and B, no arm name anywhere on the page.
     expect(screen.getByText('Pick 1 of 10')).toBeTruthy()
@@ -52,7 +52,7 @@ describe('App', () => {
 
   it('shows the ranking after ten picks', () => {
     render(<App />)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Start the test' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Find your style' })[0])
     for (let i = 0; i < 10; i++) fireEvent.click(screen.getByRole('button', { name: 'B reads better' }))
     expect(screen.getByRole('heading', { name: 'Your results' })).toBeTruthy()
   })
@@ -62,7 +62,7 @@ describe('App', () => {
     expect(screen.queryByText('How the ranking works')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Browse all answers' }))
     expect(screen.queryByText('How the ranking works')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Start' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Find yours' }))
     const details = screen.getByText('How the ranking works').closest('details')
     expect(details?.open).toBe(false)
     expect(details?.querySelectorAll('ol li')).toHaveLength(4)
@@ -85,14 +85,21 @@ describe('App', () => {
     expect(window.location.hash).toBe(`#browse/${project.id}/${defaultQuestion().prompt}`)
   })
 
-  it('offers another question on the results page and starts the test on it', () => {
+  it('rescopes the ranking by question and starts the test on the chosen one', () => {
     const project = PROJECTS[0]
     const other = project.prompts.find((p) => p.id !== defaultQuestion().prompt)!
+    const otherLabel = promptLabel(project, other)
     render(<App />)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Start the test' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Find your style' })[0])
     fireEvent.click(screen.getByRole('button', { name: 'A reads better' }))
     fireEvent.click(screen.getByRole('button', { name: 'Results so far' }))
-    fireEvent.click(screen.getAllByRole('tab').find((t) => t.getAttribute('aria-selected') === 'false')!)
+
+    // Choosing a question rescopes the ranking without leaving the page.
+    fireEvent.click(screen.getByRole('tab', { name: otherLabel }))
+    expect(screen.getByText(new RegExp(`0 picks on ${otherLabel}`))).toBeTruthy()
+
+    // The call to action starts picks on the chosen question.
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`Start picks on ${otherLabel}`) }))
     expect(screen.getByText(other.text)).toBeTruthy()
     expect(screen.getByText('Pick 1 of 10')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'B reads better' }))

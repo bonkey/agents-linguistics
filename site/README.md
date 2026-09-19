@@ -15,3 +15,5 @@ pnpm data       # rebuild src/data/samples.json from ../eval/outputs/ and ../eva
 Arm names, summaries and enable snippets for the ten original arms live in `src/data/arms.ts`. Arms added with `../eval/run.py arm` take their metadata from `../eval/arms.json`, and an arm without any metadata is listed by its id.
 
 Vercel: project root directory `site`, framework preset Vite, build `pnpm build`, output `dist`.
+
+Verbatim text uses Google Sans Code, served through Google Fonts under the [SIL Open Font License 1.1](https://github.com/googlefonts/googlesans-code/blob/main/OFL.txt).

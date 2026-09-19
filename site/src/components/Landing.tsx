@@ -1,7 +1,7 @@
 import { ARMS } from '../data/arms'
 
 export function Landing({ onStart, onBrowse, resumable }: { onStart: () => void; onBrowse: () => void; resumable: boolean }) {
-  const startLabel = resumable ? 'Continue the test' : 'Start the test'
+  const startLabel = resumable ? 'Continue the test' : 'Find your style'
 
   return (
     <main className="page">

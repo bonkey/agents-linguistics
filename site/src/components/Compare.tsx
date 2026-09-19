@@ -52,12 +52,9 @@ export function Compare({ question, comps, onPick, onResults }: Props) {
 
   const inRound = done % ROUND
   return (
-    <main className="page">
+    <main className="page compare">
       <header className="bar">
         <Prompt prompt={prompt} label={PROJECTS.length > 1 ? project.name : 'Prompt'} />
-        <div className="muted">
-          Pick {inRound + 1} of {ROUND}{done >= ROUND ? ` (round ${Math.floor(done / ROUND) + 1})` : ''}
-        </div>
         <details className="how muted small">
           <summary>How the ranking works</summary>
           <ol>
@@ -68,20 +65,31 @@ export function Compare({ question, comps, onPick, onResults }: Props) {
           </ol>
         </details>
       </header>
-      <div className="pair">
-        <article className="pane">
-          <div className="pane-head">A <span className="muted">{samples[0].words} words · {harnessLabel(samples[0].harness)}</span></div>
+      <nav className="vote-nav" aria-label="Pick the answer you would rather read">
+        <button className="vote-a" onClick={() => pick('a')} title="Left arrow or A">A reads better</button>
+        <button className="vote-tie" onClick={() => pick('tie')} title="0 or S">No preference</button>
+        <button className="vote-b" onClick={() => pick('b')} title="Right arrow or B">B reads better</button>
+      </nav>
+      <div className="pair compare-pair">
+        <article className="pane pane-a">
+          <div className="pane-head">
+            <span className="pane-label">A</span>{' '}
+            <span className="pane-meta">{samples[0].words} words · {harnessLabel(samples[0].harness)}</span>
+          </div>
           <Markdown text={samples[0].text} />
         </article>
-        <article className="pane">
-          <div className="pane-head">B <span className="muted">{samples[1].words} words · {harnessLabel(samples[1].harness)}</span></div>
+        <article className="pane pane-b">
+          <div className="pane-head">
+            <span className="pane-label">B</span>{' '}
+            <span className="pane-meta">{samples[1].words} words · {harnessLabel(samples[1].harness)}</span>
+          </div>
           <Markdown text={samples[1].text} />
         </article>
       </div>
       <footer className="bar sticky">
-        <button className="primary" onClick={() => pick('a')} title="Left arrow or A">A reads better</button>
-        <button onClick={() => pick('tie')} title="0 or S">No preference</button>
-        <button className="primary" onClick={() => pick('b')} title="Right arrow or B">B reads better</button>
+        <span className="muted">
+          Pick {inRound + 1} of {ROUND}{done >= ROUND ? ` (round ${Math.floor(done / ROUND) + 1})` : ''}
+        </span>
         {done > 0 && <button className="link" onClick={onResults}>Results so far</button>}
       </footer>
     </main>
